@@ -1,0 +1,19 @@
+# secrets
+.env
+
+# python
+.venv/
+.venv_old/
+__pycache__/
+*.pyc
+
+# editor
+.vscode/
+
+# raw data (download separately, see README)
+data/raw/*.csv
+!data/raw/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
