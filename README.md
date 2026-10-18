@@ -1,75 +1,87 @@
-# Retail Sales Data Analysis — Pandas Project
-In this project, you will use Python and Pandas to clean, transform, explore, and analyze a retail sales dataset.
+# E-Commerce Data Engine — Step 1: Environment + Raw Ingestion
 
-The goal is to work with real-world business data and answer different business questions using Pandas.
-## Data Exploration & Cleaning
+## Project structure
+```
+ecommerce-data-engine/
+├── data/raw/          # Olist CSVs (not in Git, see below)
+├── docs/              # profiling report + docs/erd (warehouse ERD)
+├── ingestion/         # raw loader
+├── profiling/         # data quality profiling
+├── sql/init/          # schemas (run automatically by Docker)
+├── sql/staging/       # staging layer SQL
+├── staging/           # staging runner + validation
+├── docker-compose.yml
+├── .env.example
+└── requirements.txt
+```
 
-<<<<<<< HEAD
+## Quick start (for teammates)
+
+```bash
+git clone https://github.com/mohamedahmed005/ecommerce-data-engine.git
+cd ecommerce-data-engine
+
+# create your local .env (Windows: copy .env.example .env)
+cp .env.example .env
+
+# start PostgreSQL in Docker
+docker compose up -d
+```
+
+Check that it works:
+```bash
+docker compose ps                      # ecom_postgres should be "healthy"
+pip install -r requirements.txt
+python test_connection.py              # should print the Postgres version
+```
+
+> `.env` is local only and is never committed. Copy it from `.env.example` on every machine.
+> To reset the database completely (deletes all data): `docker compose down -v`
+
 ## Data
 The CSVs are not committed. Download the Olist Brazilian E-Commerce dataset from Kaggle and put the 9 files in `data/raw/`.
-link : https://kaggle.com/datasets/olistbr/brazilian-ecommerce
-=======
-* Read the data from the `data.csv` file.
-* Explore the data
-* Check for missing values.
-* Check for duplicate records.
-* Check the data types of all columns.
-* Convert columns to the appropriate data types where necessary:
->>>>>>> fd43361 (Add quick start for teammates to README)
 
-  * Convert `Invoice Date` to datetime.
-  * Convert numeric and currency columns to numeric values.
-* Create new columns from `Invoice Date`:
+Download link: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
 
-  * `day`
-  * `month`
-  * `year`
-* Drop unnecessary columns such as `Retailer ID`.
-* Handle missing values appropriately.
-* Check the `Region` column and make sure there are no typos or inconsistent names.
+## Setup (optional: Python virtual environment)
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
----
+## Load data
+1. Put the 9 Olist CSVs in `data/raw/`
+2. Run:
+```bash
+python ingestion/ingest_olist.py
+```
 
-# Business Analysis
+## Expected row counts (original Olist dataset)
+| table | rows |
+|---|---|
+| customers | 99,441 |
+| geolocation | 1,000,163 |
+| order_items | 112,650 |
+| order_payments | 103,886 |
+| order_reviews | 99,224 |
+| orders | 99,441 |
+| products | 32,951 |
+| sellers | 3,095 |
+| product_category_translation | 71 |
 
-Perform the following analysis using Pandas:
+If your counts differ, check the CSVs before moving on.
 
-### Sales Analysis
+## Layers
+`raw` (as-is) → `staging` (typed/cleaned) → `warehouse` (star schema) ; `dq` holds quality-check results.
 
-1. What is the total sales?
+## Step 2: Profiling & data quality checks
+```bash
+python profiling/profile_raw.py
+```
+- Writes per-column stats to `dq.column_profile` and 38 check results to `dq.check_results`
+- Generates `docs/profiling_report.md` — paste/adapt it into the Requirements and System Analysis docs
+- Checks are grouped by category: uniqueness, integrity, completeness, validity, consistency
+- To add a check, append a tuple to `CHECKS` in `profiling/profile_raw.py`
 
-2. What is the average sales for every region?
-
-3. What is the average sales for every product?
-
-4. What is the count of each product?
-
-5. What is the top product by total sales?
-
-6. What is the lowest-performing product by total sales?
-
-### Time Analysis
-
-7. How many products were sold each year?
-
-8. How have total sales changed over the years?
-
-9. How do sales vary month over month?
-
-### Retailer Analysis
-
-10. Which retailer has the highest total sales?
-
-11. Which retailer has the highest operating profit?
-
-### Product & Profit Analysis
-
-12. What is the most profitable product?
-
-13. What is the average price per unit for each product?
-
-### Geographic Analysis
-
-14. Which region has the highest total sales?
-
-15. Which city contributes the most to total sales?
+## Warehouse design
+Star schema ERD and data dictionary: `docs/erd/warehouse_erd.md` (diagram: `docs/erd/warehouse_erd.png`).
