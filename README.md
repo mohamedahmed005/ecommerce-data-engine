@@ -17,6 +17,7 @@ ecommerce-data-engine/
 
 ## Data
 The CSVs are not committed. Download the Olist Brazilian E-Commerce dataset from Kaggle and put the 9 files in `data/raw/`.
+link : https://kaggle.com/datasets/olistbr/brazilian-ecommerce
 
 ## Setup
 ```bash
