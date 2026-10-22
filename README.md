@@ -9,7 +9,9 @@ ecommerce-data-engine/
 ├── profiling/         # data quality profiling
 ├── sql/init/          # schemas (run automatically by Docker)
 ├── sql/staging/       # staging layer SQL
+├── sql/warehouse/     # warehouse DDL (dimensions + facts)
 ├── staging/           # staging runner + validation
+├── warehouse/         # warehouse DDL runner
 ├── docker-compose.yml
 ├── .env.example
 └── requirements.txt
@@ -85,3 +87,37 @@ python profiling/profile_raw.py
 
 ## Warehouse design
 Star schema ERD and data dictionary: `docs/erd/warehouse_erd.md` (diagram: `docs/erd/warehouse_erd.png`).
+
+## Step 3: Warehouse DDL (Gold layer)
+Creates the empty star schema in the `warehouse` schema. Run it after the staging layer is built.
+
+```bash
+python warehouse/run_ddl.py
+```
+
+It runs `sql/warehouse/01_dimensions.sql` then `sql/warehouse/02_facts.sql`, and prints `OK` for each of the 8 tables. It is safe to re-run: it drops and recreates the warehouse tables and never touches `raw` or `staging`.
+
+| Table | Type | Grain | Primary key |
+|---|---|---|---|
+| dim_date | dimension | one calendar day | date_key (YYYYMMDD) |
+| dim_geography | dimension | one zip-code prefix | geography_key |
+| dim_customer | dimension | one real customer (`customer_unique_id`) | customer_key |
+| dim_product | dimension | one product | product_key |
+| dim_seller | dimension | one seller | seller_key |
+| fact_sales | fact | one order item | (order_id, order_item_id) |
+| fact_payments | fact | one payment row of an order | (order_id, payment_sequential) |
+| fact_reviews | fact | one review | (review_id, order_id) |
+
+Design notes:
+- Every dimension has a surrogate key; the natural key is kept as a `UNIQUE` attribute.
+- Each dimension (except `dim_date`) has an **Unknown** member with key `-1`, so a fact row that cannot resolve a key points to it instead of being dropped.
+- `fact_sales` has five role-playing date keys (purchase, approved, carrier, delivered, estimated). They are `NULL` when the event never happened.
+- `fact_sales` carries the quality flags `is_valid_item`, `is_valid_sale` and `is_delivered`. Suspicious rows are flagged, never deleted. Definitions are in `docs/erd/warehouse_erd.md`.
+- `order_id` is a degenerate dimension: `fact_payments` and `fact_reviews` link to `fact_sales` through `order_id` only, with no enforced FK.
+
+Check the tables from the terminal:
+```bash
+docker exec -it ecom_postgres psql -U ecom -d ecom -c "\dt warehouse.*"
+```
+
+> Status: the tables are created empty. The ETL that loads them from `staging` is the next step.
