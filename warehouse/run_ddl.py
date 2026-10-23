@@ -13,6 +13,7 @@ import psycopg2
 from dotenv import load_dotenv
 
 SQL_DIR = Path("sql/warehouse")
+DDL_FILES = ["01_dimensions.sql", "02_facts.sql"]   # 03/04 are the ETL (run_etl.py)
 
 EXPECTED_TABLES = [
     "dim_customer", "dim_date", "dim_geography", "dim_product", "dim_seller",
@@ -32,9 +33,10 @@ def connect():
 
 
 def main():
-    files = sorted(SQL_DIR.glob("*.sql"))
-    if not files:
-        sys.exit(f"No .sql files in {SQL_DIR}")
+    files = [SQL_DIR / n for n in DDL_FILES]
+    missing = [f for f in files if not f.exists()]
+    if missing:
+        sys.exit(f"Missing: {[str(m) for m in missing]}")
 
     conn = connect()
     try:

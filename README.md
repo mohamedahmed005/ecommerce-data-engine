@@ -11,7 +11,7 @@ ecommerce-data-engine/
 ├── sql/staging/       # staging layer SQL
 ├── sql/warehouse/     # warehouse DDL (dimensions + facts)
 ├── staging/           # staging runner + validation
-├── warehouse/         # warehouse DDL runner
+├── warehouse/         # warehouse DDL + ETL runners
 ├── docker-compose.yml
 ├── .env.example
 └── requirements.txt
@@ -120,4 +120,35 @@ Check the tables from the terminal:
 docker exec -it ecom_postgres psql -U ecom -d ecom -c "\dt warehouse.*"
 ```
 
-> Status: the tables are created empty. The ETL that loads them from `staging` is the next step.
+## Step 4: Warehouse ETL (staging -> Gold)
+Loads the 8 warehouse tables from `staging` and validates the result. Run it after Step 3.
+
+```bash
+python warehouse/run_etl.py
+```
+
+It runs `sql/warehouse/03_load_dimensions.sql` (dimensions) then `sql/warehouse/04_load_facts.sql` (facts), then prints a validation report. It is safe to re-run: every run empties the warehouse tables and reloads them. It exits with an error if any check fails.
+
+Rules:
+- A key that cannot be resolved points to the Unknown member (`-1`); the row is kept.
+- A date that does not exist (e.g. an order never delivered) stays `NULL`.
+- `dim_customer` keeps one row per `customer_unique_id`, with the address of the customer's most recent order.
+- `dim_geography` contains every zip in `staging.geolocation`, plus zips used by customers/sellers that geolocation lacks (coordinates `NULL`).
+- `delivery_days` = delivered date - purchase date. `delay_days` = delivered date - estimated date (positive = late).
+- Flags: `is_valid_item` = `price > 0` and `freight_value >= 0` and all keys resolved; `is_valid_sale` = `is_valid_item` and status not `canceled`/`unavailable`; `is_delivered` = status `delivered` and a delivered date exists.
+- Orders without items (775) have no row in `fact_sales`; their payments and reviews are still loaded.
+
+Validation results on the full Olist data:
+
+| Table | Rows |
+|---|---|
+| dim_customer | 96,096 |
+| dim_seller | 3,095 |
+| dim_product | 32,951 |
+| dim_geography | 19,173 |
+| dim_date | 800 |
+| fact_sales | 112,650 |
+| fact_payments | 103,886 |
+| fact_reviews | 99,224 |
+
+Totals match staging to the cent: `sum(price)` 13,591,643.70, `sum(freight_value)` 2,251,909.54, `sum(payment_value)` 16,008,872.12. No fact points to an Unknown member and there are no duplicate keys. In `fact_sales`: 112,101 rows are valid sales, 549 are not (canceled/unavailable orders), 110,189 are delivered, and 7,265 were delivered late.
