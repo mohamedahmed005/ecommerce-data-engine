@@ -1,4 +1,4 @@
-# E-Commerce Data Engine — Step 1: Environment + Raw Ingestion
+# E-Commerce Data Engine
 
 ## Project structure
 ```
@@ -7,9 +7,10 @@ ecommerce-data-engine/
 ├── docs/              # profiling report + docs/erd (warehouse ERD)
 ├── ingestion/         # raw loader
 ├── profiling/         # data quality profiling
+├── scripts/           # helper scripts (connection test, analytical query runner)
 ├── sql/init/          # schemas (run automatically by Docker)
 ├── sql/staging/       # staging layer SQL
-├── sql/warehouse/     # warehouse DDL (dimensions + facts)
+├── sql/warehouse/     # warehouse DDL, load scripts, analytical queries
 ├── staging/           # staging runner + validation
 ├── warehouse/         # warehouse DDL + ETL runners
 ├── docker-compose.yml
@@ -34,7 +35,7 @@ Check that it works:
 ```bash
 docker compose ps                      # ecom_postgres should be "healthy"
 pip install -r requirements.txt
-python test_connection.py              # should print the Postgres version
+python scripts/test_connection.py      # should print the Postgres version
 ```
 
 > `.env` is local only and is never committed. Copy it from `.env.example` on every machine.
@@ -134,7 +135,7 @@ Rules:
 - A date that does not exist (e.g. an order never delivered) stays `NULL`.
 - `dim_customer` keeps one row per `customer_unique_id`, with the address of the customer's most recent order.
 - `dim_geography` contains every zip in `staging.geolocation`, plus zips used by customers/sellers that geolocation lacks (coordinates `NULL`).
-- `delivery_days` = delivered date - purchase date. `delay_days` = delivered date - estimated date (positive = late).
+- `delivery_days` = delivered date - purchase date. `delay_days` = delivered date - estimated date (positive = late). Both are computed on calendar dates (time of day is ignored), so an order delivered later on the estimated day counts as on time.
 - Flags: `is_valid_item` = `price > 0` and `freight_value >= 0` and all keys resolved; `is_valid_sale` = `is_valid_item` and status not `canceled`/`unavailable`; `is_delivered` = status `delivered` and a delivered date exists.
 - Orders without items (775) have no row in `fact_sales`; their payments and reviews are still loaded.
 
@@ -151,5 +152,47 @@ Validation results on the full Olist data:
 | fact_payments | 103,886 |
 | fact_reviews | 99,224 |
 
-Totals match staging to the cent: `sum(price)` 13,591,643.70, `sum(freight_value)` 2,251,909.54, `sum(payment_value)` 16,008,872.12. No fact points to an Unknown member and there are no duplicate keys. In `fact_sales`: 112,101 rows are valid sales, 549 are not (canceled/unavailable orders), 110,189 are delivered, and 7,265 were delivered late.
+Totals match staging to the cent: `sum(price)` 13,591,643.70, `sum(freight_value)` 2,251,909.54, `sum(payment_value)` 16,008,872.12. No fact points to an Unknown member and there are no duplicate keys. In `fact_sales`: 112,101 rows are valid sales, 549 are not (canceled/unavailable orders), 110,189 are delivered, and 7,265 were delivered late (counted per order item).
 
+## Step 5: Analytical queries
+SQL analytical queries on the Gold layer provide business insights into sales performance, delivery operations, payments, and customer reviews. They are in `sql/warehouse/05_analytical_queries.sql`.
+
+Run them all from the project root (connection settings are read from `.env`):
+
+```bash
+python scripts/run_queries.py
+```
+
+To run a different SQL file, pass its path: `python scripts/run_queries.py path/to/file.sql`. The runner executes each query that starts with a `-- N. Title` comment and prints its result as a table.
+
+| # | Query | What it measures |
+|---|---|---|
+| 1 | Monthly Sales Performance | Monthly sales revenue, freight costs, and number of orders |
+| 2 | Top Products | Top 10 products by sales revenue, items sold, and orders |
+| 3 | Top Sellers | Top 10 sellers by sales revenue, items sold, and orders |
+| 4 | Delivery Performance | Average delivery time, average net delay, average delay of late orders, late and on-time/early orders, late-order percentage |
+| 5 | Customer Review Analysis | Review score distribution, percentages, and the overall average score (weighted by reviews per score) |
+| 6 | Payment Analysis | Payment methods by records, orders, total and average payment value |
+| 7 | Delivery Delay vs. Customer Reviews | Average review score of late vs. on-time/early deliveries |
+
+Technical notes:
+- All queries use PostgreSQL and tables in the `warehouse` schema.
+- Sales queries (1-3) use the `is_valid_sale` flag to exclude items that do not meet the valid-sale criteria.
+- Delivery queries (4 and 7) use the `is_delivered` flag, which already excludes canceled and unavailable orders. They are aggregated at the **order** level so multi-item orders are counted once. This is why Query 4 reports fewer late orders than the item-level count in Step 4.
+- An order is **late** when `delay_days > 0`, i.e. delivered at least one full calendar day after the estimated date. `avg_delay_days` is the net delay (early deliveries count as negative); `avg_delay_days_late_only` averages late orders only.
+- In Query 7, reviews are averaged per order first, then joined to delivery data.
+- Sales revenue (`price`) and recorded payment value (`payment_value`) are analyzed separately because they represent different business measures. `payment_value` includes freight and installment effects, so its total will not equal the total of `price` in Query 1.
+
+Results on the full Olist data:
+
+| Metric | Value |
+|---|---|
+| Valid sales (Query 1, all months) | 13,494,400.74 |
+| Delivered orders | 96,470 |
+| Average delivery time | 12.50 days |
+| Late orders | 6,534 (6.77%) |
+| Overall average review score | 4.09 |
+| Average review: late vs. on-time/early | 2.27 vs. 4.29 |
+| Top payment method | credit_card (12,542,084.19) |
+
+These queries are the foundation for business reporting, dashboards, and the project's AI-powered analytics assistant.
