@@ -196,3 +196,31 @@ Results on the full Olist data:
 | Top payment method | credit_card (12,542,084.19) |
 
 These queries are the foundation for business reporting, dashboards, and the project's AI-powered analytics assistant.
+
+## Step 6: Warehouse data quality checks
+Independent tests on the Gold layer, separate from the validation inside `run_etl.py`. Run it after Step 4:
+
+```bash
+python warehouse/run_dq_checks.py
+```
+
+It runs 54 checks, prints one line per check, stores every result in `dq.warehouse_check_results` (one `run_id` per run, so history is kept), and writes `docs/warehouse_dq_report.md`. It exits with an error if any `error`-severity check fails.
+
+Each check is one SQL query that returns a single number and passes when it equals the expected value (0 for most checks).
+
+| Category | What it checks |
+|---|---|
+| Reconciliation | Warehouse row counts and sums (`price`, `freight_value`, `payment_value`) match `staging`; dimension sizes match distinct natural keys |
+| Uniqueness | No duplicate fact grain keys or natural keys in dimensions |
+| Referential integrity | Every foreign key (customer, product, seller, date keys) resolves to a dimension row; optional date keys may be `NULL` |
+| Unknown members | No fact row points to the Unknown member (`-1`) |
+| Completeness | No `NULL` in required measure and key columns |
+| Validity | No negative amounts, review scores within 1-5; warnings for suspicious values (delivery before purchase, delivery over 365 days, payments of value 0) |
+| Consistency | Quality flags agree with order status and dates (`is_valid_sale`, `is_delivered`, `delay_days`) |
+| Known results (Olist) | Counts documented in Step 4 (112,101 valid sales, 549 not valid, 110,189 delivered, 775 orders without items) |
+
+Severity:
+- `error`: a mismatch is a **FAIL** and stops the pipeline.
+- `warn`: a mismatch is reported as **WARN** (a data anomaly to document, not a pipeline failure).
+
+To add a check, call `add(...)` in `warehouse/run_dq_checks.py`. The "Known results" checks are specific to the Olist dataset; remove them if the data changes.
