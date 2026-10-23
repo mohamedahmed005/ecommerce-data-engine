@@ -152,3 +152,4 @@ Validation results on the full Olist data:
 | fact_reviews | 99,224 |
 
 Totals match staging to the cent: `sum(price)` 13,591,643.70, `sum(freight_value)` 2,251,909.54, `sum(payment_value)` 16,008,872.12. No fact points to an Unknown member and there are no duplicate keys. In `fact_sales`: 112,101 rows are valid sales, 549 are not (canceled/unavailable orders), 110,189 are delivered, and 7,265 were delivered late.
+
