@@ -174,13 +174,26 @@ To run a different SQL file, pass its path: `python scripts/run_queries.py path/
 | 5 | Customer Review Analysis | Review score distribution, percentages, and the overall average score (weighted by reviews per score) |
 | 6 | Payment Analysis | Payment methods by records, orders, total and average payment value |
 | 7 | Delivery Delay vs. Customer Reviews | Average review score of late vs. on-time/early deliveries |
+| 8 | Top Product Categories | Top 10 categories by sales revenue, items sold, orders, and share of total sales |
+| 9 | Average Order Value and Monthly Growth | Monthly average order value and sales growth compared with the previous month |
+| 10 | Sales by Customer State | Sales, orders, unique customers, and sales share per state |
+| 11 | Customer Spending and Repeat Orders | Average spending, orders per customer, repeat customers and their percentage |
+| 12 | Delivery Performance by State | Average delivery time and late-order percentage per customer state |
+| 13 | Top Sellers by Satisfaction | Top 10 sellers by average review score (with sales and late-order percentage) |
+| 14 | Order Status Breakdown by Month | Canceled and unavailable orders per month |
+| 15 | Credit Card Installments | Credit-card payments grouped by number of installments |
 
 Technical notes:
 - All queries use PostgreSQL and tables in the `warehouse` schema.
-- Sales queries (1-3) use the `is_valid_sale` flag to exclude items that do not meet the valid-sale criteria.
-- Delivery queries (4 and 7) use the `is_delivered` flag, which already excludes canceled and unavailable orders. They are aggregated at the **order** level so multi-item orders are counted once. This is why Query 4 reports fewer late orders than the item-level count in Step 4.
+- Sales queries (1-3 and 8-11) use the `is_valid_sale` flag to exclude items that do not meet the valid-sale criteria.
+- Delivery queries (4, 7, 12 and 13) use the `is_delivered` flag, which already excludes canceled and unavailable orders. They are aggregated at the **order** level so multi-item orders are counted once. This is why Query 4 reports fewer late orders than the item-level count in Step 4.
 - An order is **late** when `delay_days > 0`, i.e. delivered at least one full calendar day after the estimated date. `avg_delay_days` is the net delay (early deliveries count as negative); `avg_delay_days_late_only` averages late orders only.
-- In Query 7, reviews are averaged per order first, then joined to delivery data.
+- In Queries 7 and 13, reviews are averaged per order first, then joined to delivery data.
+- `dim_customer` has one row per real customer (`customer_unique_id`), so Queries 10-12 count a returning customer once. The customer's state is the address of their most recent order.
+- Thresholds: Query 12 only shows states with at least 100 delivered orders, and Query 13 only sellers with at least 50 delivered orders, so percentages are reliable.
+- Query 9 compares each month with the previous month that has data (the dataset has no orders in November 2016). Growth is shown only when both months have at least 100 orders, because the first and last months of the dataset are very small.
+- Query 14 counts only orders that have at least one item in `fact_sales`. Almost all `unavailable` orders have no items, so they are not counted here, and the canceled percentage is also understated.
+- Query 15 groups credit-card payments only, because installments are a credit-card feature.
 - Sales revenue (`price`) and recorded payment value (`payment_value`) are analyzed separately because they represent different business measures. `payment_value` includes freight and installment effects, so its total will not equal the total of `price` in Query 1.
 
 Results on the full Olist data:
