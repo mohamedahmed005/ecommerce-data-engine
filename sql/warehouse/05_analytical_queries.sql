@@ -447,3 +447,114 @@ SELECT
 FROM installment_groups
 GROUP BY group_order, installment_group
 ORDER BY group_order;
+
+
+-- 16. Low-Stock Products at the Latest Snapshot
+-- Uses the SYNTHETIC inventory table. Products at or below their reorder level,
+-- ranked by sales in the latest month.
+
+WITH latest AS (
+    SELECT MAX(snapshot_date_key) AS snapshot_date_key
+    FROM warehouse.fact_inventory
+)
+SELECT
+    p.product_id,
+    COALESCE(p.category_name_en, 'Unknown') AS category_name_en,
+    i.closing_stock,
+    i.reorder_level,
+    i.units_sold AS units_sold_last_month
+FROM warehouse.fact_inventory AS i
+JOIN latest AS l
+    ON i.snapshot_date_key = l.snapshot_date_key
+JOIN warehouse.dim_product AS p
+    ON i.product_key = p.product_key
+WHERE i.is_low_stock = TRUE
+ORDER BY i.units_sold DESC, p.product_id
+LIMIT 10;
+
+
+-- 17. Monthly Inventory Health
+-- Uses the SYNTHETIC inventory table. Share of tracked products that are low on
+-- stock or out of stock at the end of each month.
+
+SELECT
+    d.year,
+    d.month,
+    d.month_name,
+    COUNT(*) AS products_tracked,
+    COUNT(*) FILTER (WHERE i.is_low_stock) AS low_stock_products,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE i.is_low_stock) / NULLIF(COUNT(*), 0), 2) AS low_stock_percentage,
+    COUNT(*) FILTER (WHERE i.closing_stock = 0) AS stock_out_products,
+    SUM(i.units_sold) AS units_sold,
+    SUM(i.units_received) AS units_received
+FROM warehouse.fact_inventory AS i
+JOIN warehouse.dim_date AS d
+    ON i.snapshot_date_key = d.date_key
+GROUP BY d.year, d.month, d.month_name
+ORDER BY d.year, d.month;
+
+
+-- 18. Stock Coverage by Category
+-- Uses the SYNTHETIC inventory table. Months of cover = closing stock divided by
+-- the units sold in the latest month. The 10 categories with the lowest cover.
+
+WITH latest AS (
+    SELECT MAX(snapshot_date_key) AS snapshot_date_key
+    FROM warehouse.fact_inventory
+)
+SELECT
+    COALESCE(p.category_name_en, 'Unknown') AS category_name_en,
+    COUNT(*) AS products_tracked,
+    SUM(i.closing_stock) AS total_closing_stock,
+    SUM(i.units_sold) AS units_sold_last_month,
+    ROUND(
+        CAST(SUM(i.closing_stock) AS numeric) / NULLIF(SUM(i.units_sold), 0),
+        2
+    ) AS months_of_cover
+FROM warehouse.fact_inventory AS i
+JOIN latest AS l
+    ON i.snapshot_date_key = l.snapshot_date_key
+JOIN warehouse.dim_product AS p
+    ON i.product_key = p.product_key
+GROUP BY COALESCE(p.category_name_en, 'Unknown')
+HAVING SUM(i.units_sold) > 0
+ORDER BY months_of_cover ASC, category_name_en
+LIMIT 10;
+
+
+-- 19. Best-Selling Products vs. Current Stock
+-- Uses the SYNTHETIC inventory table. Top 10 products by total units sold, with
+-- their latest stock and months of cover (closing stock / average monthly sales).
+
+WITH latest AS (
+    SELECT MAX(snapshot_date_key) AS snapshot_date_key
+    FROM warehouse.fact_inventory
+),
+product_totals AS (
+    SELECT
+        product_key,
+        SUM(units_sold) AS total_units_sold,
+        ROUND(AVG(units_sold), 2) AS avg_monthly_units
+    FROM warehouse.fact_inventory
+    GROUP BY product_key
+)
+SELECT
+    p.product_id,
+    COALESCE(p.category_name_en, 'Unknown') AS category_name_en,
+    pt.total_units_sold,
+    pt.avg_monthly_units,
+    i.closing_stock,
+    i.reorder_level,
+    ROUND(
+        CAST(i.closing_stock AS numeric) / NULLIF(pt.avg_monthly_units, 0),
+        2
+    ) AS months_of_cover
+FROM product_totals AS pt
+JOIN latest AS l ON TRUE
+JOIN warehouse.fact_inventory AS i
+    ON i.product_key = pt.product_key
+   AND i.snapshot_date_key = l.snapshot_date_key
+JOIN warehouse.dim_product AS p
+    ON pt.product_key = p.product_key
+ORDER BY pt.total_units_sold DESC, p.product_id
+LIMIT 10;

@@ -211,6 +211,47 @@ add(C, "orders without items in staging = 775",
     "(SELECT 1 FROM staging.order_items oi WHERE oi.order_id = o.order_id)", expected=775)
 
 
+
+# ---- 9. Synthetic inventory (added only when warehouse.fact_inventory exists) ----
+def add_inventory_checks():
+    C = "Inventory (synthetic)"
+    add(C, "fact_inventory has rows",
+        "SELECT CASE WHEN COUNT(*) > 0 THEN 0 ELSE 1 END FROM warehouse.fact_inventory")
+    add(C, "fact_inventory: duplicate (product_key, snapshot_date_key)",
+        dup_sql("fact_inventory", "product_key, snapshot_date_key"))
+    add(C, "fact_inventory.product_key -> dim_product",
+        orphan_sql("fact_inventory", "product_key", "dim_product", "product_key", False))
+    add(C, "fact_inventory.snapshot_date_key -> dim_date",
+        orphan_sql("fact_inventory", "snapshot_date_key", "dim_date", "date_key", False))
+    add(C, "fact_inventory: negative stock or movement",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory WHERE opening_stock < 0 "
+        "OR units_received < 0 OR units_sold < 0 OR closing_stock < 0")
+    add(C, "fact_inventory: opening + received - sold <> closing",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory "
+        "WHERE opening_stock + units_received - units_sold <> closing_stock")
+    add(C, "fact_inventory: opening stock <> previous month's closing stock",
+        "SELECT COUNT(*) FROM (SELECT opening_stock, LAG(closing_stock) OVER "
+        "(PARTITION BY product_key ORDER BY snapshot_date_key) AS prev_closing "
+        "FROM warehouse.fact_inventory) t "
+        "WHERE prev_closing IS NOT NULL AND opening_stock <> prev_closing")
+    add(C, "fact_inventory.units_sold <> real sales in fact_sales",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory i "
+        "JOIN warehouse.dim_date dd ON dd.date_key = i.snapshot_date_key "
+        "LEFT JOIN (SELECT f.product_key, d.year, d.month, COUNT(*) AS units "
+        "FROM warehouse.fact_sales f JOIN warehouse.dim_date d ON f.purchase_date_key = d.date_key "
+        "WHERE f.is_valid_sale GROUP BY f.product_key, d.year, d.month) s "
+        "ON s.product_key = i.product_key AND s.year = dd.year AND s.month = dd.month "
+        "WHERE i.units_sold <> COALESCE(s.units, 0)")
+    add(C, "fact_inventory: reorder_level < 1",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory WHERE reorder_level < 1")
+    add(C, "fact_inventory: is_low_stock inconsistent with closing_stock <= reorder_level",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory "
+        "WHERE is_low_stock <> (closing_stock <= reorder_level)")
+    add(C, "fact_inventory: snapshots with closing_stock = 0 (stock-outs)",
+        "SELECT COUNT(*) FROM warehouse.fact_inventory WHERE closing_stock = 0",
+        severity="warn")
+
+
 # ----------------------------------------------------------------------
 # Execution
 # ----------------------------------------------------------------------
@@ -340,6 +381,13 @@ def main():
     run_id = run_ts.strftime("%Y%m%d_%H%M%S")
     conn = pg.connect(**get_db_config())
     try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('warehouse.fact_inventory') IS NOT NULL")
+            has_inventory = cur.fetchone()[0]
+        if has_inventory:
+            add_inventory_checks()
+        else:
+            print("warehouse.fact_inventory not found: inventory checks skipped\n")
         results = run_checks(conn)
         for r in results:
             print(f"[{r['status']:<5}] {r['category']:<22} {r['name']}"

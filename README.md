@@ -182,6 +182,10 @@ To run a different SQL file, pass its path: `python scripts/run_queries.py path/
 | 13 | Top Sellers by Satisfaction | Top 10 sellers by average review score (with sales and late-order percentage) |
 | 14 | Order Status Breakdown by Month | Canceled and unavailable orders per month |
 | 15 | Credit Card Installments | Credit-card payments grouped by number of installments |
+| 16 | Low-Stock Products | Products at or below their reorder level in the latest month (synthetic inventory) |
+| 17 | Monthly Inventory Health | Share of products low on stock or out of stock per month (synthetic inventory) |
+| 18 | Stock Coverage by Category | Categories with the fewest months of stock cover (synthetic inventory) |
+| 19 | Best-Sellers vs. Current Stock | Top 10 products by units sold with their latest stock and months of cover (synthetic inventory) |
 
 Technical notes:
 - All queries use PostgreSQL and tables in the `warehouse` schema.
@@ -194,6 +198,7 @@ Technical notes:
 - Query 9 compares each month with the previous month that has data (the dataset has no orders in November 2016). Growth is shown only when both months have at least 100 orders, because the first and last months of the dataset are very small.
 - Query 14 counts only orders that have at least one item in `fact_sales`. Almost all `unavailable` orders have no items, so they are not counted here, and the canceled percentage is also understated.
 - Query 15 groups credit-card payments only, because installments are a credit-card feature.
+- Queries 16-19 use the **synthetic** `fact_inventory` table (see Step 7). Run `python warehouse/generate_inventory.py` first, otherwise they report an error and the runner continues with the others.
 - Sales revenue (`price`) and recorded payment value (`payment_value`) are analyzed separately because they represent different business measures. `payment_value` includes freight and installment effects, so its total will not equal the total of `price` in Query 1.
 
 Results on the full Olist data:
@@ -217,7 +222,7 @@ Independent tests on the Gold layer, separate from the validation inside `run_et
 python warehouse/run_dq_checks.py
 ```
 
-It runs 54 checks, prints one line per check, stores every result in `dq.warehouse_check_results` (one `run_id` per run, so history is kept), and writes `docs/warehouse_dq_report.md`. It exits with an error if any `error`-severity check fails.
+It runs 54 checks (plus 11 inventory checks when `warehouse.fact_inventory` exists), prints one line per check, stores every result in `dq.warehouse_check_results` (one `run_id` per run, so history is kept), and writes `docs/warehouse_dq_report.md`. It exits with an error if any `error`-severity check fails.
 
 Each check is one SQL query that returns a single number and passes when it equals the expected value (0 for most checks).
 
@@ -231,9 +236,39 @@ Each check is one SQL query that returns a single number and passes when it equa
 | Validity | No negative amounts, review scores within 1-5; warnings for suspicious values (delivery before purchase, delivery over 365 days, payments of value 0) |
 | Consistency | Quality flags agree with order status and dates (`is_valid_sale`, `is_delivered`, `delay_days`) |
 | Known results (Olist) | Counts documented in Step 4 (112,101 valid sales, 549 not valid, 110,189 delivered, 775 orders without items) |
+| Inventory (synthetic) | Only if `fact_inventory` exists: no duplicates or orphan keys, no negative stock, `opening + received - sold = closing`, stock continuity between months, `units_sold` equals the real sales in `fact_sales` |
 
 Severity:
 - `error`: a mismatch is a **FAIL** and stops the pipeline.
 - `warn`: a mismatch is reported as **WARN** (a data anomaly to document, not a pipeline failure).
 
 To add a check, call `add(...)` in `warehouse/run_dq_checks.py`. The "Known results" checks are specific to the Olist dataset; remove them if the data changes.
+
+## Step 7: Synthetic inventory
+Olist has no stock data, so the warehouse gets one extra table, `fact_inventory`, **generated** from the real monthly sales. Only `units_sold` is real; stock levels, receipts and reorder levels are simulated and marked as synthetic in the table comment.
+
+```bash
+python warehouse/generate_inventory.py
+```
+
+Run it after `python warehouse/run_etl.py` (the ETL reloads the dimensions, so run the generator again after every ETL run). It drops and recreates the table using `sql/warehouse/06_inventory.sql`, so it is safe to re-run, and a fixed seed gives the same data every time.
+
+| Table | Type | Grain | Primary key |
+|---|---|---|---|
+| fact_inventory | fact (synthetic) | one product per month (stock at month end) | (product_key, snapshot_date_key) |
+
+| Column | Meaning |
+|---|---|
+| `product_key`, `snapshot_date_key` | Keys to `dim_product` and `dim_date` (last day of the month) |
+| `opening_stock` | Stock at the start of the month |
+| `units_received` | Simulated deliveries |
+| `units_sold` | **Real** valid-sale items of the product in that month |
+| `closing_stock` | `opening_stock + units_received - units_sold` |
+| `reorder_level` | Simulated reorder point |
+| `is_low_stock` | `closing_stock <= reorder_level` |
+
+Simulation rules:
+- A product is tracked from the month of its first sale until the last month with at least 100 orders.
+- `reorder_level` = max(2, 1.5 x the product's average monthly sales). When opening stock is at or below it, the product is reordered up to about 3 months of sales.
+- Some deliveries are partial or delayed, so some products run low. If stock would not cover the real sales, an emergency receipt covers the gap, so stock is never negative.
+- There are no foreign key constraints on this table (the ETL reloads the dimensions); the data quality checks verify the keys instead.
