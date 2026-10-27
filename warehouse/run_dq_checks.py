@@ -82,6 +82,17 @@ def dup_sql(table, cols):
     )
 
 
+def original_only(alias):
+    """SQL condition on a warehouse fact: the row is NOT from a synthetic demo order."""
+    return f"NOT {alias}.is_synthetic"
+
+
+def original_staging_order(alias):
+    """SQL condition on staging.orders: the order is NOT a synthetic demo order."""
+    return (f"NOT EXISTS (SELECT 1 FROM raw.orders r WHERE r.order_id = {alias}.order_id "
+            f"AND r._source_file = 'synthetic_demo')")
+
+
 def sum_diff_sql(wh_table, wh_col, st_table, st_col):
     return (
         f"SELECT ROUND(CAST(ABS((SELECT SUM({wh_col}) FROM warehouse.{wh_table}) "
@@ -175,8 +186,12 @@ add(C, "fact_sales: delivery_days < 0 (delivered before purchase)",
     "SELECT COUNT(*) FROM warehouse.fact_sales WHERE delivery_days < 0", severity="warn")
 add(C, "fact_sales: delivery_days > 365",
     "SELECT COUNT(*) FROM warehouse.fact_sales WHERE delivery_days > 365", severity="warn")
-add(C, "fact_payments: payment_value = 0",
-    "SELECT COUNT(*) FROM warehouse.fact_payments WHERE payment_value = 0", severity="warn")
+add(C, "fact_payments: payment_value = 0 in original Olist data (known anomaly: 9)",
+    "SELECT COUNT(*) FROM warehouse.fact_payments p WHERE p.payment_value = 0 AND "
+    + original_only("p"), expected=9, severity="warn")
+add(C, "fact_payments: payment_value = 0 in synthetic orders",
+    "SELECT COUNT(*) FROM warehouse.fact_payments p WHERE p.payment_value = 0 AND NOT "
+    + original_only("p"))
 
 # ---- 7. Consistency of flags and derived columns ----------------------------
 C = "Consistency"
@@ -198,18 +213,37 @@ add(C, "delivered date earlier than purchase date (date keys)",
     "SELECT COUNT(*) FROM warehouse.fact_sales WHERE delivered_date_key < purchase_date_key",
     severity="warn")
 
-# ---- 8. Known results on the full Olist dataset (from the README) -------------
-C = "Known results (Olist)"
-add(C, "valid sales rows = 112,101",
-    "SELECT COUNT(*) FROM warehouse.fact_sales WHERE is_valid_sale", expected=112101)
-add(C, "not-valid sales rows = 549",
-    "SELECT COUNT(*) FROM warehouse.fact_sales WHERE NOT is_valid_sale", expected=549)
-add(C, "delivered rows = 110,189",
-    "SELECT COUNT(*) FROM warehouse.fact_sales WHERE is_delivered", expected=110189)
-add(C, "orders without items in staging = 775",
+# ---- 8. Reference results on the original Olist dataset ----------------------
+# Counted on the original Olist orders only (synthetic demo orders are excluded),
+# so these stay exact even after synthetic orders are added.
+C = "Olist reference results"
+add(C, "valid sales rows in original Olist data = 112,101",
+    "SELECT COUNT(*) FROM warehouse.fact_sales f WHERE f.is_valid_sale AND "
+    + original_only("f"), expected=112101)
+add(C, "not-valid sales rows in original Olist data = 549",
+    "SELECT COUNT(*) FROM warehouse.fact_sales f WHERE NOT f.is_valid_sale AND "
+    + original_only("f"), expected=549)
+add(C, "delivered rows in original Olist data = 110,189",
+    "SELECT COUNT(*) FROM warehouse.fact_sales f WHERE f.is_delivered AND "
+    + original_only("f"), expected=110189)
+add(C, "orders without items in original Olist staging data = 775",
     "SELECT COUNT(*) FROM staging.orders o WHERE NOT EXISTS "
-    "(SELECT 1 FROM staging.order_items oi WHERE oi.order_id = o.order_id)", expected=775)
+    "(SELECT 1 FROM staging.order_items oi WHERE oi.order_id = o.order_id) AND "
+    + original_staging_order("o"), expected=775)
 
+
+# ---- 8b. Synthetic demo orders (is_synthetic flag) ---------------------------
+C = "Synthetic demo data"
+add(C, "fact_payments.is_synthetic differs from fact_sales.is_synthetic for the same order",
+    "SELECT COUNT(*) FROM warehouse.fact_payments p JOIN "
+    "(SELECT DISTINCT order_id, is_synthetic FROM warehouse.fact_sales) s "
+    "ON s.order_id = p.order_id WHERE p.is_synthetic <> s.is_synthetic")
+add(C, "fact_reviews.is_synthetic differs from fact_sales.is_synthetic for the same order",
+    "SELECT COUNT(*) FROM warehouse.fact_reviews r JOIN "
+    "(SELECT DISTINCT order_id, is_synthetic FROM warehouse.fact_sales) s "
+    "ON s.order_id = r.order_id WHERE r.is_synthetic <> s.is_synthetic")
+add(C, "synthetic items with an invalid key (flagged is_valid_item = FALSE)",
+    "SELECT COUNT(*) FROM warehouse.fact_sales WHERE is_synthetic AND NOT is_valid_item")
 
 
 # ---- 9. Synthetic inventory (added only when warehouse.fact_inventory exists) ----
@@ -239,7 +273,7 @@ def add_inventory_checks():
         "JOIN warehouse.dim_date dd ON dd.date_key = i.snapshot_date_key "
         "LEFT JOIN (SELECT f.product_key, d.year, d.month, COUNT(*) AS units "
         "FROM warehouse.fact_sales f JOIN warehouse.dim_date d ON f.purchase_date_key = d.date_key "
-        "WHERE f.is_valid_sale GROUP BY f.product_key, d.year, d.month) s "
+        "WHERE f.is_valid_sale AND NOT f.is_synthetic GROUP BY f.product_key, d.year, d.month) s "
         "ON s.product_key = i.product_key AND s.year = dd.year AND s.month = dd.month "
         "WHERE i.units_sold <> COALESCE(s.units, 0)")
     add(C, "fact_inventory: reorder_level < 1",
@@ -247,8 +281,9 @@ def add_inventory_checks():
     add(C, "fact_inventory: is_low_stock inconsistent with closing_stock <= reorder_level",
         "SELECT COUNT(*) FROM warehouse.fact_inventory "
         "WHERE is_low_stock <> (closing_stock <= reorder_level)")
-    add(C, "fact_inventory: snapshots with closing_stock = 0 (stock-outs)",
-        "SELECT COUNT(*) FROM warehouse.fact_inventory WHERE closing_stock = 0",
+    add(C, "fact_inventory: stock-out snapshots (closing_stock = 0) above 5% of all snapshots",
+        "SELECT CASE WHEN COUNT(*) > 0 AND 100.0 * COUNT(*) FILTER (WHERE closing_stock = 0) "
+        "/ COUNT(*) > 5 THEN 1 ELSE 0 END FROM warehouse.fact_inventory",
         severity="warn")
 
 

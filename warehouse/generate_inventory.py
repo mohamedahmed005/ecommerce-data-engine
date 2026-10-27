@@ -13,6 +13,10 @@ sales in warehouse.fact_sales:
     the gap, so closing_stock is never negative
   * a fixed seed makes the output identical on every run
 
+Only ORIGINAL Olist sales are used (rows with is_synthetic = FALSE). The
+synthetic demo orders of 2026 are ignored, otherwise every product would be
+tracked through the 7-year gap between 2018 and 2026.
+
 Tracking starts in the month of the product's first sale and ends at the
 last month with at least 100 orders (the last months of the dataset are
 almost empty).
@@ -107,7 +111,7 @@ def main():
                 SELECT d.year, d.month
                 FROM warehouse.fact_sales f
                 JOIN warehouse.dim_date d ON f.purchase_date_key = d.date_key
-                WHERE f.is_valid_sale = TRUE
+                WHERE f.is_valid_sale = TRUE AND f.is_synthetic = FALSE
                 GROUP BY d.year, d.month
                 HAVING COUNT(DISTINCT f.order_id) >= %s
                 ORDER BY d.year DESC, d.month DESC
@@ -126,7 +130,7 @@ def main():
                 SELECT f.product_key, d.year, d.month, COUNT(*)
                 FROM warehouse.fact_sales f
                 JOIN warehouse.dim_date d ON f.purchase_date_key = d.date_key
-                WHERE f.is_valid_sale = TRUE AND f.product_key <> -1
+                WHERE f.is_valid_sale = TRUE AND f.is_synthetic = FALSE AND f.product_key <> -1
                 GROUP BY f.product_key, d.year, d.month""")
             sales = defaultdict(dict)
             for product_key, y, m, units in cur.fetchall():

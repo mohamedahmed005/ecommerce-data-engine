@@ -59,8 +59,10 @@ SELECT
     shipping_limit_date::timestamp        AS shipping_limit_ts,
     price::numeric(10,2)                  AS price,
     freight_value::numeric(10,2)          AS freight_value,
-    -- the rest of the data ends in 2018; limits in 2019+ are outliers
-    (shipping_limit_date::timestamp >= '2019-01-01') AS flag_shipping_limit_outlier
+    -- the original Olist data ends in 2018; limits in 2019+ are outliers
+    -- but synthetic demo orders (2018-2026) are expected to have later dates
+    (shipping_limit_date::timestamp >= '2019-01-01'
+     AND COALESCE(_source_file, '') <> 'synthetic_demo') AS flag_shipping_limit_outlier
 FROM raw.order_items;
 ALTER TABLE staging.order_items ADD PRIMARY KEY (order_id, order_item_id);
 CREATE INDEX ON staging.order_items (product_id);

@@ -3,6 +3,8 @@
 -- Quality flags are separate columns. Suspicious rows are FLAGGED, never deleted.
 -- order_id is a degenerate dimension: fact_payments / fact_reviews link to
 -- fact_sales through order_id only (no enforced FK; an order has many items).
+-- is_synthetic = TRUE marks rows that come from synthetic demo orders
+-- (raw rows with _source_file = 'synthetic_demo'); original Olist rows are FALSE.
 -- Run AFTER 01_dimensions.sql.
 -- ============================================================
 
@@ -28,6 +30,7 @@ CREATE TABLE warehouse.fact_sales (
     is_valid_item       boolean NOT NULL,
     is_valid_sale       boolean NOT NULL,
     is_delivered        boolean NOT NULL,
+    is_synthetic        boolean NOT NULL DEFAULT false,
     PRIMARY KEY (order_id, order_item_id)
 );
 CREATE INDEX ON warehouse.fact_sales (order_id);
@@ -45,6 +48,7 @@ CREATE TABLE warehouse.fact_payments (
     payment_type         varchar(30),
     payment_installments integer,
     payment_value        numeric(10,2),
+    is_synthetic         boolean NOT NULL DEFAULT false,
     PRIMARY KEY (order_id, payment_sequential)
 );
 CREATE INDEX ON warehouse.fact_payments (customer_key);
@@ -59,6 +63,7 @@ CREATE TABLE warehouse.fact_reviews (
     answer_date_key  integer REFERENCES warehouse.dim_date (date_key),
     review_score     integer CHECK (review_score BETWEEN 1 AND 5),
     has_comment      boolean NOT NULL,
+    is_synthetic     boolean NOT NULL DEFAULT false,
     PRIMARY KEY (review_id, order_id)
 );
 CREATE INDEX ON warehouse.fact_reviews (order_id);
