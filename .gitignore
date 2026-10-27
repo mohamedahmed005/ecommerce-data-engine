@@ -17,3 +17,4 @@ data/raw/*.csv
 # OS
 .DS_Store
 Thumbs.db
+debug.log 
