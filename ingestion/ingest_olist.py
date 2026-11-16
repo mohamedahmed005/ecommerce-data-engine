@@ -1,25 +1,18 @@
 """
-Load the Olist CSVs into Postgres schema `raw` exactly as they are.
-
-- Every source column is stored as TEXT (Bronze layer: no cleaning, no casting).
-- Two metadata columns are added: _source_file, _ingested_at.
-- Safe to re-run: each table is dropped and recreated.
-
-Usage:
-    python ingestion/ingest_olist.py
-    python ingestion/ingest_olist.py --data-dir data/raw
+Load the Olist CSVs into Postgres schema `raw` (Azure-optimized chunked COPY).
 """
 import argparse
 import csv
+import io
 import os
 import sys
+import time
 from pathlib import Path
 
 import psycopg2
 from psycopg2 import sql
 from dotenv import load_dotenv
 
-# csv file name -> raw table name
 FILES = {
     "olist_customers_dataset.csv": "customers",
     "olist_geolocation_dataset.csv": "geolocation",
@@ -32,6 +25,8 @@ FILES = {
     "product_category_name_translation.csv": "product_category_translation",
 }
 
+BATCH_ROWS = 3000
+
 
 def connect():
     load_dotenv()
@@ -41,33 +36,56 @@ def connect():
         user=os.getenv("POSTGRES_USER", "ecom"),
         password=os.getenv("POSTGRES_PASSWORD", "ecom_pass"),
         dbname=os.getenv("POSTGRES_DB", "ecom"),
+        sslmode=os.getenv("PGSSLMODE", "require"),
+        keepalives=1,
+        keepalives_idle=20,
+        keepalives_interval=10,
+        keepalives_count=5,
     )
-
-
-def read_header(path: Path):
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        return next(csv.reader(f))
 
 
 def load_file(cur, path: Path, table: str) -> int:
-    cols = read_header(path)
+    t0 = time.time()
     ident = sql.Identifier("raw", table)
 
-    col_defs = [sql.SQL("{} TEXT").format(sql.Identifier(c)) for c in cols]
-    col_defs.append(sql.SQL("_source_file TEXT DEFAULT {}").format(sql.Literal(path.name)))
-    col_defs.append(sql.SQL("_ingested_at TIMESTAMPTZ DEFAULT now()"))
-
-    cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(ident))
-    cur.execute(sql.SQL("CREATE TABLE {} ({})").format(ident, sql.SQL(", ").join(col_defs)))
-
-    copy_stmt = sql.SQL("COPY {} ({}) FROM STDIN WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')").format(
-        ident, sql.SQL(", ").join(sql.Identifier(c) for c in cols)
-    )
     with open(path, "r", encoding="utf-8-sig", newline="") as f:
-        cur.copy_expert(copy_stmt, f)
+        reader = csv.reader(f)
+        cols = next(reader)
 
-    cur.execute(sql.SQL("SELECT count(*) FROM {}").format(ident))
-    return cur.fetchone()[0]
+        col_defs = [sql.SQL("{} TEXT").format(sql.Identifier(c)) for c in cols]
+        col_defs.append(sql.SQL("_source_file TEXT DEFAULT {}").format(sql.Literal(path.name)))
+        col_defs.append(sql.SQL("_ingested_at TIMESTAMPTZ DEFAULT now()"))
+
+        cur.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(ident))
+        cur.execute(sql.SQL("CREATE UNLOGGED TABLE {} ({})").format(ident, sql.SQL(", ").join(col_defs)))
+
+        copy_stmt = sql.SQL(
+            "COPY {} ({}) FROM STDIN WITH (FORMAT csv, HEADER false, ENCODING 'UTF8')"
+        ).format(ident, sql.SQL(", ").join(sql.Identifier(c) for c in cols))
+
+        total = 0
+        batch = []
+        for row in reader:
+            batch.append(row)
+            if len(batch) >= BATCH_ROWS:
+                buf = io.StringIO()
+                csv.writer(buf, lineterminator="\n").writerows(batch)
+                buf.seek(0)
+                cur.copy_expert(copy_stmt, buf)
+                total += len(batch)
+                batch.clear()
+                print(f"\r  raw.{table:<28} {total:>10,} rows ({time.time() - t0:.1f}s)", end="", flush=True)
+
+        if batch:
+            buf = io.StringIO()
+            csv.writer(buf, lineterminator="\n").writerows(batch)
+            buf.seek(0)
+            cur.copy_expert(copy_stmt, buf)
+            total += len(batch)
+
+    cur.execute(sql.SQL("ALTER TABLE {} SET LOGGED").format(ident))
+    print(f"\r  raw.{table:<28} {total:>10,} rows ({time.time() - t0:.1f}s) - OK")
+    return total
 
 
 def main():
@@ -84,15 +102,22 @@ def main():
         sys.exit(1)
 
     conn = connect()
+    conn.autocommit = True
     try:
-        with conn, conn.cursor() as cur:
+        with conn.cursor() as cur:
+            cur.execute("SET synchronous_commit = OFF;")
+            cur.execute("""
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND usename = current_user
+                  AND pid <> pg_backend_pid()
+            """)
             cur.execute("CREATE SCHEMA IF NOT EXISTS raw")
-            print(f"{'table':32} {'rows':>10}")
-            print("-" * 43)
+            print("Uploading Olist CSVs to Azure PostgreSQL...\n")
             for fname, table in FILES.items():
-                n = load_file(cur, data_dir / fname, table)
-                print(f"raw.{table:28} {n:>10,}")
-        print("\nDone. All tables loaded in a single transaction.")
+                load_file(cur, data_dir / fname, table)
+        print("\nDone. All 9 tables loaded.")
     finally:
         conn.close()
 
