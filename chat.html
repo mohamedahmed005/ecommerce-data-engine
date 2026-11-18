@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse AI Copilot | E-Commerce Data Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#090d16',
+                        cardBg: '#111827',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full text-slate-100 flex flex-col font-sans antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-cardBg border-b border-slate-800 px-6 py-3.5 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="bg-emerald-600 p-2.5 rounded-xl shadow-md shadow-emerald-500/20">
+                <i class="fa-solid fa-robot text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white">Warehouse AI Copilot</h1>
+                <p class="text-xs text-slate-400">Natural Language SQL Analytics & Inventory Recommendations</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center">
+                <i class="fa-solid fa-chart-line mr-1.5 text-blue-400"></i> Back to Dashboard
+            </a>
+            <button onclick="clearChat()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3.5 py-2 rounded-lg text-xs font-medium transition flex items-center">
+                <i class="fa-solid fa-trash-can mr-1.5"></i> Clear Chat
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Layout: Sidebar Prompts + Full Chat Area -->
+    <div class="flex-1 flex overflow-hidden max-w-7xl w-full mx-auto">
+
+        <!-- Left Sidebar: Suggested Analytical Prompts -->
+        <aside class="hidden md:flex md:w-72 bg-cardBg/60 border-r border-slate-800 p-5 flex-col justify-between">
+            <div class="space-y-5 overflow-y-auto">
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">📊 Sales & Revenue</h3>
+                    <div class="space-y-2">
+                        <button onclick="sendQuickPrompt('Top 10 categories by revenue')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Top 10 categories by revenue
+                        </button>
+                        <button onclick="sendQuickPrompt('What is the total revenue and order count?')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Total revenue & order count
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">📦 Inventory & Stock</h3>
+                    <div class="space-y-2">
+                        <button onclick="sendQuickPrompt('Show low stock products that need reorder')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Low stock alerts & reorder list
+                        </button>
+                        <button onclick="sendQuickPrompt('Which products are out of stock?')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Out of stock products
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">🔥 Smart Recommendations</h3>
+                    <div class="space-y-2">
+                        <button onclick="sendQuickPrompt('Recommend trending products in stock')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Recommend in-stock trending items
+                        </button>
+                        <button onclick="sendQuickPrompt('Recommend products in health_beauty category')" class="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-300 transition">
+                            Best items in Health & Beauty
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500">
+                <i class="fa-solid fa-database text-emerald-400 mr-1"></i> Connected to Azure PostgreSQL (`ecom`)
+            </div>
+        </aside>
+
+        <!-- Right Main Chat Container -->
+        <main class="flex-1 flex flex-col bg-slate-950">
+            <!-- Messages Stream -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Welcome Message rendered via JS -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-cardBg border-t border-slate-800">
+                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="max-w-4xl mx-auto flex gap-3">
+                    <input type="text" id="chat-input" autocomplete="off" placeholder="Ask about sales, top categories, low stock, or product recommendations (Arabic / English)..." 
+                           class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-semibold transition flex items-center shadow-lg shadow-blue-600/20">
+                        <span>Send</span>
+                        <i class="fa-solid fa-paper-plane ml-2"></i>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+
+        const WELCOME_HTML = `
+            <div class="flex items-start space-x-3 max-w-3xl">
+                <div class="bg-emerald-600/20 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 mt-1">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="bg-cardBg border border-slate-800 p-4 rounded-2xl text-sm text-slate-200 shadow-sm space-y-2">
+                    <p class="font-semibold text-white">Welcome to the Warehouse AI Assistant!</p>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        I am directly connected to your <strong>Azure PostgreSQL Data Warehouse</strong>. Ask me in <strong>English or Arabic</strong> about revenue trends, top-performing categories, delivery delays, inventory shortages, or inventory-aware product recommendations.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            clearChat();
+        });
+
+        function clearChat() {
+            const chatBox = document.getElementById("chat-messages");
+            chatBox.innerHTML = WELCOME_HTML;
+        }
+
+        function sendQuickPrompt(text) {
+            document.getElementById("chat-input").value = text;
+            handleChatSubmit(new Event("submit"));
+        }
+
+        function renderDynamicTable(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) return "";
+            const keys = Object.keys(rows[0]);
+            const headers = keys.map(k => `<th class="p-2.5 text-left font-semibold text-slate-300 uppercase tracking-wider">${k.replace(/_/g, ' ')}</th>`).join('');
+            const bodyRows = rows.slice(0, 10).map(row => {
+                const cells = keys.map(k => {
+                    let val = row[k];
+                    if (typeof val === 'number' && !Number.isInteger(val)) val = val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    else if (typeof val === 'number') val = val.toLocaleString();
+                    return `<td class="p-2.5 text-slate-300 whitespace-nowrap">${val ?? '-'}</td>`;
+                }).join('');
+                return `<tr class="border-t border-slate-800/80 hover:bg-slate-800/40">${cells}</tr>`;
+            }).join('');
+
+            return `
+                <div class="mt-3 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/70">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-900 border-b border-slate-800"><tr>${headers}</tr></thead>
+                        <tbody>${bodyRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function handleChatSubmit(event) {
+            event.preventDefault();
+            const inputEl = document.getElementById("chat-input");
+            const msg = inputEl.value.trim();
+            if (!msg) return;
+
+            const chatBox = document.getElementById("chat-messages");
+
+            // User Bubble
+            chatBox.innerHTML += `
+                <div class="flex items-start justify-end space-x-3">
+                    <div class="bg-blue-600 text-white p-3.5 rounded-2xl rounded-tr-sm text-sm max-w-2xl shadow-md">
+                        ${msg}
+                    </div>
+                </div>
+            `;
+            inputEl.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Typing Indicator
+            const loadingId = "loading-" + Date.now();
+            chatBox.innerHTML += `
+                <div id="${loadingId}" class="flex items-start space-x-3 max-w-3xl">
+                    <div class="bg-emerald-600/20 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                    <div class="bg-cardBg border border-slate-800 px-4 py-3 rounded-2xl text-xs text-slate-400">
+                        Analyzing warehouse data...
+                    </div>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg, include_synthetic: true })
+                });
+                const data = await res.json();
+                document.getElementById(loadingId)?.remove();
+
+                const cleanAnswer = (data.answer || "Here are the results:").replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Extract structured rows from any field returned by backend
+                const tableRows = data.data || data.rows || data.results || data.items || [];
+                const tableHtml = renderDynamicTable(tableRows);
+
+                // Recommendations cards if returned
+                let recHtml = "";
+                if (data.recommendations && data.recommendations.length > 0) {
+                    recHtml = `<div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+                    data.recommendations.slice(0, 4).forEach(r => {
+                        recHtml += `
+                            <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-xs flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-white">${r.category_name_en || r.product_id}</p>
+                                    <p class="text-[11px] text-slate-400">Stock: <span class="text-emerald-400 font-bold">${r.closing_stock ?? 'Available'}</span></p>
+                                </div>
+                                <span class="text-emerald-400 font-bold">R$ ${r.avg_price ?? '--'}</span>
+                            </div>
+                        `;
+                    });
+                    recHtml += `</div>`;
+                }
+
+                chatBox.innerHTML += `
+                    <div class="flex items-start space-x-3 max-w-4xl">
+                        <div class="bg-emerald-600/20 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 mt-1">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="bg-cardBg border border-slate-800 p-4 rounded-2xl text-sm text-slate-200 shadow-sm flex-1 overflow-hidden">
+                            <div class="leading-relaxed">${cleanAnswer}</div>
+                            ${tableHtml}
+                            ${recHtml}
+                        </div>
+                    </div>
+                `;
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+            } catch (err) {
+                document.getElementById(loadingId)?.remove();
+                chatBox.innerHTML += `
+                    <div class="bg-rose-500/10 border border-rose-500/30 p-3.5 rounded-xl text-xs text-rose-300 max-w-2xl">
+                        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Error connecting to FastAPI backend. Make sure uvicorn is running on port 8000.
+                    </div>
+                `;
+            }
+        }
+    </script>
+    <script src="/enhance.js" defer></script>
+</body>
+</html>

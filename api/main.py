@@ -28,8 +28,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 @app.get("/", include_in_schema=False)
-def serve_frontend():
+def serve_landing():
+    return FileResponse(BASE_DIR / "landing.html")
+
+
+@app.get("/dashboard", include_in_schema=False)
+def serve_dashboard():
     return FileResponse(BASE_DIR / "index.html")
+
+
+@app.get("/chat", include_in_schema=False)
+def serve_chat():
+    return FileResponse(BASE_DIR / "chat.html")
+
+
+@app.get("/enhance.js", include_in_schema=False)
+def serve_enhance():
+    return FileResponse(BASE_DIR / "enhance.js", media_type="application/javascript")
 
 
 @app.get("/api/health")

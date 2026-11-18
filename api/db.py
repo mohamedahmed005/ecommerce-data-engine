@@ -1,117 +1,95 @@
-"""
-Database connection pool & SQL query loader for Azure PostgreSQL.
-"""
 import os
 import re
 from contextlib import contextmanager
-from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Dict
 from dotenv import load_dotenv
-from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
+from psycopg2.pool import ThreadedConnectionPool
 
 load_dotenv()
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ANALYTICAL_SQL_PATH = PROJECT_ROOT / "sql" / "warehouse" / "05_analytical_queries.sql"
-
-_pool: Optional[pool.ThreadedConnectionPool] = None
+_pool = None
 
 
-def get_pool() -> pool.ThreadedConnectionPool:
+def _get_pool() -> ThreadedConnectionPool:
     global _pool
     if _pool is None:
-        _pool = pool.ThreadedConnectionPool(
-            minconn=1,
+        _pool = ThreadedConnectionPool(
+            minconn=2,
             maxconn=10,
-            host=os.getenv("POSTGRES_HOST") or os.getenv("PGHOST", "localhost"),
-            port=os.getenv("POSTGRES_PORT") or os.getenv("PGPORT", "5432"),
-            dbname=os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE", "ecom"),
-            user=os.getenv("POSTGRES_USER") or os.getenv("PGUSER", "ecom"),
-            password=os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD", "ecom_pass"),
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=int(os.getenv("POSTGRES_PORT", "5432")),
+            dbname=os.getenv("POSTGRES_DB", "ecom"),
+            user=os.getenv("POSTGRES_USER", "ecom_admin"),
+            password=os.getenv("POSTGRES_PASSWORD", ""),
             sslmode=os.getenv("PGSSLMODE", "require"),
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=5,
+            connect_timeout=30,
         )
     return _pool
 
 
 @contextmanager
 def get_cursor():
-    conn_pool = get_pool()
-    conn = conn_pool.getconn()
+    pool = _get_pool()
+    conn = pool.getconn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             yield cur
         conn.commit()
     except Exception:
         conn.rollback()
+        try:
+            pool.putconn(conn, close=True)
+        except Exception:
+            pass
         raise
-    finally:
-        conn_pool.putconn(conn)
+    else:
+        pool.putconn(conn)
 
 
-def _serialize_value(val: Any) -> Any:
-    if isinstance(val, Decimal):
-        return float(val)
-    return val
-
-
-def fetch_all(sql_query: str, params: Optional[Tuple[Any, ...]] = None) -> List[Dict[str, Any]]:
+def fetch_all(query: str, params=None):
     with get_cursor() as cur:
-        cur.execute(sql_query, params)
-        rows = cur.fetchall()
-        return [{k: _serialize_value(v) for k, v in dict(r).items()} for r in rows]
+        cur.execute(query, params)
+        return [dict(row) for row in cur.fetchall()]
 
 
-def fetch_one(sql_query: str, params: Optional[Tuple[Any, ...]] = None) -> Optional[Dict[str, Any]]:
+def fetch_one(query: str, params=None):
     with get_cursor() as cur:
-        cur.execute(sql_query, params)
+        cur.execute(query, params)
         row = cur.fetchone()
-        return {k: _serialize_value(v) for k, v in dict(row).items()} if row else None
+        return dict(row) if row else None
 
 
-def load_analytical_queries() -> Dict[int, Dict[str, Any]]:
-    """
-    Parses sql/warehouse/05_analytical_queries.sql into a dictionary keyed by query_id (1..21).
-    """
-    if not ANALYTICAL_SQL_PATH.exists():
+def load_analytical_queries():
+    root = Path(__file__).resolve().parent.parent
+    candidates = [
+        root / "sql" / "warehouse" / "05_analytical_queries.sql",
+        root / "sql" / "warehouse" / "04_analytical_queries.sql",
+    ]
+    sql_path = next((path for path in candidates if path.is_file()), None)
+    if sql_path is None:
+        matches = sorted(root.rglob("*_analytical_queries.sql"))
+        sql_path = matches[0] if matches else None
+    if sql_path is None:
         return {}
 
-    content = ANALYTICAL_SQL_PATH.read_text(encoding="utf-8")
-    pattern = re.compile(
-        r"--\s*(\d+)\.\s*([^\n]+)\n(.*?)(?=(?:\n--\s*\d+\.\s*)|\Z)",
-        re.DOTALL,
-    )
-
-    queries: Dict[int, Dict[str, Any]] = {}
-    for match in pattern.finditer(content):
-        q_id = int(match.group(1))
+    text = sql_path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    matches = list(re.finditer(r"(?m)^\s*--\s*(\d+)\.\s*(.+?)\s*$", text))
+    queries = {}
+    for i, match in enumerate(matches):
+        query_id = int(match.group(1))
         title = match.group(2).strip()
-        raw_block = match.group(3)
-
-        clean_lines = []
-        for line in raw_block.splitlines():
-            if line.strip().startswith("--"):
-                continue
-            clean_lines.append(line)
-        sql_stmt = "\n".join(clean_lines).strip()
-
-        if q_id <= 5:
-            section = "reference_olist"
-        elif q_id <= 17:
-            section = "full_timeline"
-        else:
-            section = "inventory"
-
-        queries[q_id] = {
-            "query_id": q_id,
-            "title": title,
-            "section": section,
-            "sql": sql_stmt,
-        }
+        start = match.end() + 1
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        sql_body = "\n".join(
+            line for line in text[start:end].splitlines()
+            if not line.lstrip().startswith("--")
+        ).strip().rstrip(";")
+        if sql_body:
+            queries[query_id] = {
+                "query_id": query_id,
+                "title": title,
+                "sql": sql_body,
+            }
     return queries

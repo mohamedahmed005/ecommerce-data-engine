@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Commerce Data Engine & AI Assistant</title>
-    <!-- Tailwind CSS CDN -->
+    <title>E-Commerce Data Engine | 360° Executive BI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -17,33 +14,86 @@
                     colors: {
                         darkBg: '#090d16',
                         cardBg: '#111827',
-                        accentBlue: '#3b82f6',
-                        accentEmerald: '#10b981',
                     }
                 }
             }
         }
     </script>
+    <style>
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #090d16 !important; color: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
 </head>
 <body class="h-full text-slate-100 flex flex-col font-sans antialiased">
 
     <!-- Top Navigation Bar -->
-    <header class="bg-cardBg border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg">
-        <div class="flex items-center space-x-3">
-            <div class="bg-blue-600 p-2.5 rounded-xl shadow-md shadow-blue-500/20">
+    <header class="bg-cardBg border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+        <a href="/" class="flex items-center space-x-3 group" title="Back to Landing Overview">
+            <div class="bg-blue-600 group-hover:bg-blue-500 transition p-2.5 rounded-xl shadow-md shadow-blue-500/20">
                 <i class="fa-solid fa-chart-line text-white text-lg"></i>
             </div>
             <div>
-                <h1 class="text-xl font-bold tracking-tight text-white">E-Commerce Data Engine</h1>
-                <p class="text-xs text-slate-400">Azure PostgreSQL Warehouse & AI Intelligence</p>
+                <h1 class="text-xl font-bold tracking-tight text-white group-hover:text-blue-400 transition">E-Commerce Data Engine</h1>
+                <p class="text-xs text-slate-400">360° Azure PostgreSQL Warehouse & Executive BI</p>
             </div>
-        </div>
-        <div class="flex items-center space-x-4">
-            <span id="api-status" class="px-3 py-1 text-xs font-medium rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Connecting to API...
+        </a>
+
+        <div class="flex flex-wrap items-center gap-2.5 no-print">
+            <!-- Back to Landing Page Button -->
+            <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center" title="Return to Overview">
+                <i class="fa-solid fa-house mr-1.5 text-indigo-400"></i> Overview
+            </a>
+
+            <!-- Real vs Synthetic Data Toggle Switch -->
+            <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800" title="Switch between Full Warehouse (480K) and Original Olist Dataset (100K)">
+                <button id="btn-ds-all" onclick="toggleDatasetMode(true)" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">
+                    All Data (480K)
+                </button>
+                <button id="btn-ds-real" onclick="toggleDatasetMode(false)" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+                    Original Olist (100K)
+                </button>
+            </div>
+
+            <span id="api-status" class="px-3 py-1.5 text-xs font-medium rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Connecting...
             </span>
-            <button onclick="loadDashboardData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-lg text-sm font-medium transition border border-slate-700">
-                <i class="fa-solid fa-rotate-right mr-1.5"></i> Refresh
+
+            <button onclick="exportReportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center" title="Download current view as CSV">
+                <i class="fa-solid fa-file-csv mr-1.5 text-amber-400"></i> Export CSV
+            </button>
+
+            <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center" title="Print or Save PDF Report">
+                <i class="fa-solid fa-print mr-1.5 text-sky-400"></i> Print PDF
+            </button>
+
+            <a href="/chat" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-md shadow-emerald-600/20 flex items-center">
+                <i class="fa-solid fa-robot mr-1.5"></i> AI Assistant
+            </a>
+
+            <button onclick="loadDashboardData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-medium transition border border-slate-700">
+                <i class="fa-solid fa-rotate-right"></i>
             </button>
         </div>
     </header>
@@ -51,12 +101,73 @@
     <!-- Main Content Grid -->
     <main class="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full space-y-6">
 
-        <!-- KPI Cards Section -->
+        <!-- Interactive Time Explorer & Year/Month Slider Bar -->
+        <div class="bg-cardBg border border-slate-800 rounded-2xl p-5 shadow-md space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div class="flex items-center space-x-2.5">
+                    <div class="bg-indigo-500/15 text-indigo-400 p-2 rounded-lg border border-indigo-500/20">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-white">Interactive Time Explorer (Year & Month Revenue)</h2>
+                        <p class="text-xs text-slate-400">Select a year to sync all KPIs, states, payments & sellers — or drag the slider across months</p>
+                    </div>
+                </div>
+
+                <!-- View Mode + Year Filter Controls -->
+                <div class="flex flex-wrap items-center gap-3 no-print">
+                    <div id="year-pills" class="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button onclick="selectYearFilter('ALL')" data-year="ALL" class="year-pill bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">All Years</button>
+                    </div>
+
+                    <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button id="btn-gran-monthly" onclick="setGranularity('monthly')" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white transition">
+                            Monthly
+                        </button>
+                        <button id="btn-gran-yearly" onclick="setGranularity('yearly')" class="px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+                            Yearly
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Slider + Live Selected Period Metrics -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                <div class="lg:col-span-7 space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400 font-medium">Timeline Scrubber:</span>
+                        <span id="slider-current-label" class="font-bold text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-md border border-blue-500/20">--</span>
+                    </div>
+                    <input type="range" id="timeline-slider" min="0" max="0" value="0" oninput="handleSliderChange(this.value)"
+                           class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer no-print">
+                    <div class="flex justify-between text-[11px] text-slate-500 font-mono">
+                        <span id="slider-min-label">Start</span>
+                        <span class="text-slate-400">Drag slider to inspect any month or year</span>
+                        <span id="slider-max-label">End</span>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 grid grid-cols-2 gap-3">
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5">
+                        <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Selected Month Revenue</p>
+                        <h4 id="selected-month-rev" class="text-lg font-extrabold text-emerald-400 mt-0.5">R$ --</h4>
+                        <p id="selected-month-orders" class="text-[11px] text-slate-400 mt-0.5">-- orders in month</p>
+                    </div>
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5">
+                        <p id="selected-year-title" class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Selected Year Total</p>
+                        <h4 id="selected-year-rev" class="text-lg font-extrabold text-blue-400 mt-0.5">R$ --</h4>
+                        <p id="selected-year-orders" class="text-[11px] text-slate-400 mt-0.5">-- orders in year</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic KPI Cards Section (Synced with Year & Dataset Toggle) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-5 shadow-sm hover:border-slate-700 transition">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Revenue</p>
+                        <p id="kpi-rev-label" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Revenue (All Years)</p>
                         <h3 id="kpi-revenue" class="text-2xl font-extrabold text-white mt-1">--</h3>
                     </div>
                     <div class="bg-blue-500/10 p-3 rounded-xl text-blue-400"><i class="fa-solid fa-dollar-sign"></i></div>
@@ -94,52 +205,124 @@
                     </div>
                     <div class="bg-rose-500/10 p-3 rounded-xl text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 </div>
-                <div class="mt-3 flex items-center text-xs text-slate-400">Requires inventory replenishment</div>
+                <div class="mt-3 flex items-center text-xs text-slate-400"><span id="kpi-outofstock" class="text-amber-400 font-semibold mr-1">--</span> out of stock</div>
             </div>
         </div>
 
-        <!-- Charts & Analytics Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Monthly Sales Trend Chart -->
-            <div class="lg:col-span-2 bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-base font-bold text-white"><i class="fa-solid fa-chart-area text-blue-500 mr-2"></i> Monthly Sales & Revenue Trend</h3>
-                    <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700">2016 - 2026</span>
+        <!-- Main Chart + Annual Summary Side-by-Side -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+                    <h3 id="chart-title" class="text-base font-bold text-white">
+                        <i class="fa-solid fa-chart-area text-blue-500 mr-2"></i> Monthly Sales & Revenue Trend
+                    </h3>
+                    <span id="chart-badge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700">All Years</span>
                 </div>
-                <div class="flex-1 relative min-h-[280px]">
+                <div class="relative h-[320px]">
                     <canvas id="salesChart"></canvas>
                 </div>
             </div>
 
-            <!-- AI Assistant & Chatbot Card -->
-            <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col h-[380px] lg:h-auto">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-                    <h3 class="text-sm font-bold text-white"><i class="fa-solid fa-robot text-emerald-400 mr-2"></i> Warehouse AI Assistant</h3>
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div class="lg:col-span-4 bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col">
+                <h3 class="text-base font-bold text-white mb-4">
+                    <i class="fa-solid fa-calendar-check text-emerald-400 mr-2"></i> Annual Revenue Summary
+                </h3>
+                <div class="overflow-y-auto max-h-[320px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800 sticky top-0">
+                            <tr>
+                                <th class="p-3">Year</th>
+                                <th class="p-3 text-center">Orders</th>
+                                <th class="p-3 text-right">Revenue (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="yearly-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                            <tr><td colspan="3" class="p-4 text-center text-slate-500">Loading yearly data...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
-                <!-- Chat Messages Container -->
-                <div id="chat-messages" class="flex-1 overflow-y-auto space-y-3 py-3 pr-1 text-xs">
-                    <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 text-slate-300">
-                        Hello! Ask me about warehouse inventory, top selling categories, delivery delays, or request product recommendations in Arabic or English.
-                    </div>
-                </div>
-                <!-- Quick Suggestion Buttons -->
-                <div class="flex flex-wrap gap-1.5 py-2">
-                    <button onclick="sendQuickPrompt('Show low stock products')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[11px] border border-slate-700 transition">📦 Low Stock</button>
-                    <button onclick="sendQuickPrompt('Top categories by revenue')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[11px] border border-slate-700 transition">📊 Top Categories</button>
-                    <button onclick="sendQuickPrompt('Recommend trending products')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[11px] border border-slate-700 transition">🔥 Recommendations</button>
-                </div>
-                <!-- Chat Input Form -->
-                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="mt-2 flex gap-2">
-                    <input type="text" id="chat-input" placeholder="Ask anything about data..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition"><i class="fa-solid fa-paper-plane"></i></button>
-                </form>
             </div>
         </div>
 
-        <!-- Inventory-Aware Recommendations & Low Stock Table -->
+        <!-- Geographic States & Payment Methods Analytics Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Top States Revenue & Delivery SLA (7 cols) -->
+            <div class="lg:col-span-7 bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-base font-bold text-white">
+                        <i class="fa-solid fa-map-location-dot text-indigo-400 mr-2"></i> Top States by Revenue & Delivery SLA
+                    </h3>
+                    <span class="text-xs text-slate-400">Customer Geography</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div class="relative h-[260px]">
+                        <canvas id="statesChart"></canvas>
+                    </div>
+                    <div class="overflow-x-auto max-h-[260px]">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-2.5">State</th>
+                                    <th class="p-2.5 text-right">Revenue</th>
+                                    <th class="p-2.5 text-center">Avg Days</th>
+                                    <th class="p-2.5 text-right">Late %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="states-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                                <tr><td colspan="4" class="p-4 text-center text-slate-500">Loading states...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Methods & Installments (5 cols) -->
+            <div class="lg:col-span-5 bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-base font-bold text-white">
+                        <i class="fa-solid fa-credit-card text-emerald-400 mr-2"></i> Payment Methods & Installments
+                    </h3>
+                    <span class="text-xs text-slate-400">Checkout Mix</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center my-auto">
+                    <div class="relative h-[220px]">
+                        <canvas id="paymentsChart"></canvas>
+                    </div>
+                    <div id="payments-legend" class="space-y-2.5 text-xs">
+                        <p class="text-slate-500">Loading payment mix...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Sellers SLA Leaderboard -->
+        <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-white">
+                    <i class="fa-solid fa-store text-purple-400 mr-2"></i> Top Sellers Performance & SLA Leaderboard
+                </h3>
+                <span class="text-xs text-slate-400">Supply-Side Fulfillment Quality</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900/60 text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">Seller ID</th>
+                            <th class="p-3">Location (City, State)</th>
+                            <th class="p-3 text-center">Orders Fulfilled</th>
+                            <th class="p-3 text-right">Total Revenue (R$)</th>
+                            <th class="p-3 text-right">Late Delivery Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sellers-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                        <tr><td colspan="5" class="p-4 text-center text-slate-500">Loading sellers data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Low Stock & Top Categories Tables -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Low Stock & Restock Alert Table -->
             <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm">
                 <h3 class="text-base font-bold text-white mb-4"><i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i> Low-Stock Inventory Alerts</h3>
                 <div class="overflow-x-auto">
@@ -160,7 +343,6 @@
                 </div>
             </div>
 
-            <!-- Top Categories Revenue Table -->
             <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 shadow-sm">
                 <h3 class="text-base font-bold text-white mb-4"><i class="fa-solid fa-trophy text-blue-400 mr-2"></i> Top Product Categories</h3>
                 <div class="overflow-x-auto">
@@ -188,10 +370,21 @@
         E-Commerce Data Engine & AI System &bull; Powered by FastAPI & Azure PostgreSQL
     </footer>
 
-    <!-- Frontend JavaScript Logic -->
     <script>
         const API_BASE = "http://localhost:8000";
         let salesChartInstance = null;
+        let statesChartInstance = null;
+        let paymentsChartInstance = null;
+
+        // Global Dashboard State
+        let includeSynthetic = true;
+        let selectedYear = "ALL";
+        let chartGranularity = "monthly";
+        let allMonthlyData = [];
+        let filteredMonthlyData = [];
+        let yearlyMap = {};
+        let activeSliderIndex = 0;
+        let latestDashboardPayload = null;
 
         document.addEventListener("DOMContentLoaded", () => {
             checkApiHealth();
@@ -204,21 +397,39 @@
                 const res = await fetch(`${API_BASE}/api/health`);
                 const data = await res.json();
                 if (data.status === "ok") {
-                    statusEl.className = "px-3 py-1 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                    statusEl.className = "px-3 py-1.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                     statusEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1.5"></i> Connected (${data.database || 'ecom'})`;
                 }
             } catch (e) {
-                statusEl.className = "px-3 py-1 text-xs font-medium rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20";
-                statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> API Offline (Run uvicorn)`;
+                statusEl.className = "px-3 py-1.5 text-xs font-medium rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20";
+                statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> API Offline`;
             }
+        }
+
+        function toggleDatasetMode(useSynthetic) {
+            includeSynthetic = useSynthetic;
+            const btnAll = document.getElementById("btn-ds-all");
+            const btnReal = document.getElementById("btn-ds-real");
+            if (useSynthetic) {
+                btnAll.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition";
+                btnReal.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+            } else {
+                btnReal.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition";
+                btnAll.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+            }
+            selectedYear = "ALL";
+            loadDashboardData();
         }
 
         async function loadDashboardData() {
             try {
-                // Fetch KPIs
-                const kpiRes = await fetch(`${API_BASE}/api/analytics/kpis?include_synthetic=true`);
+                const yrParam = selectedYear !== "ALL" ? `&year=${selectedYear}` : "";
+
+                // 1. Fetch Dynamic KPIs (synced with year & dataset mode)
+                const kpiRes = await fetch(`${API_BASE}/api/analytics/kpis?include_synthetic=${includeSynthetic}${yrParam}`);
                 const kpiData = await kpiRes.json();
-                
+
+                document.getElementById("kpi-rev-label").innerText = selectedYear === "ALL" ? "Total Revenue (All Years)" : `Total Revenue (${selectedYear})`;
                 document.getElementById("kpi-revenue").innerText = `R$ ${kpiData.sales.total_revenue.toLocaleString()}`;
                 document.getElementById("kpi-orders").innerText = `${kpiData.sales.total_orders.toLocaleString()} orders`;
                 document.getElementById("kpi-delivery").innerText = `${kpiData.delivery.avg_delivery_days} days`;
@@ -226,40 +437,183 @@
                 document.getElementById("kpi-rating").innerText = `${kpiData.reviews.avg_review_score} / 5.0`;
                 document.getElementById("kpi-reviews").innerText = `${kpiData.reviews.total_reviews.toLocaleString()} reviews`;
                 document.getElementById("kpi-lowstock").innerText = `${kpiData.inventory.low_stock_products} items`;
+                document.getElementById("kpi-outofstock").innerText = `${kpiData.inventory.out_of_stock_products || 0}`;
 
-                // Fetch Dashboard Bundle (Charts & Tables)
-                const dashRes = await fetch(`${API_BASE}/api/analytics/dashboard?include_synthetic=true`);
+                // 2. Fetch Full Dashboard Aggregations
+                const dashRes = await fetch(`${API_BASE}/api/analytics/dashboard?include_synthetic=${includeSynthetic}${yrParam}`);
                 const dashData = await dashRes.json();
+                latestDashboardPayload = dashData;
 
-                renderSalesChart(dashData.monthly_sales);
-                renderCategoriesTable(dashData.top_categories);
-                renderLowStockTable(dashData.low_stock_alerts);
+                allMonthlyData = dashData.monthly_sales || [];
+                buildYearlyAggregation(allMonthlyData);
+                renderYearPills();
+                renderYearlyTable();
+                applyTimelineFilter();
 
+                renderStatesSection(dashData.geo_states || []);
+                renderPaymentsSection(dashData.payment_methods || []);
+                renderSellersTable(dashData.top_sellers || []);
+                renderCategoriesTable(dashData.top_categories || []);
+                renderLowStockTable(dashData.low_stock_alerts || []);
             } catch (err) {
                 console.error("Error loading dashboard data:", err);
             }
         }
 
-        function renderSalesChart(monthlyData) {
-            const ctx = document.getElementById('salesChart').getContext('2d');
-            const labels = monthlyData.map(d => `${d.month_name.substring(0,3)} ${d.year}`);
-            const revenues = monthlyData.map(d => d.total_sales);
+        function buildYearlyAggregation(monthly) {
+            yearlyMap = {};
+            monthly.forEach(item => {
+                const yr = String(item.year);
+                if (!yearlyMap[yr]) {
+                    yearlyMap[yr] = { year: item.year, total_sales: 0, total_orders: 0, months_count: 0 };
+                }
+                yearlyMap[yr].total_sales += Number(item.total_sales || 0);
+                yearlyMap[yr].total_orders += Number(item.total_orders || 0);
+                yearlyMap[yr].months_count += 1;
+            });
+        }
 
+        function renderYearPills() {
+            const container = document.getElementById("year-pills");
+            const years = Object.keys(yearlyMap).sort();
+            let html = `<button onclick="selectYearFilter('ALL')" data-year="ALL" class="year-pill ${selectedYear === 'ALL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'} px-3 py-1 rounded-lg text-xs font-semibold transition">All Years</button>`;
+            years.forEach(yr => {
+                const active = selectedYear === yr ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white';
+                html += `<button onclick="selectYearFilter('${yr}')" data-year="${yr}" class="year-pill ${active} px-2.5 py-1 rounded-lg text-xs font-semibold transition">${yr}</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function selectYearFilter(yr) {
+            selectedYear = yr;
+            loadDashboardData();
+        }
+
+        function setGranularity(mode) {
+            chartGranularity = mode;
+            const btnM = document.getElementById("btn-gran-monthly");
+            const btnY = document.getElementById("btn-gran-yearly");
+            if (mode === "monthly") {
+                btnM.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white transition";
+                btnY.className = "px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+            } else {
+                btnY.className = "px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white transition";
+                btnM.className = "px-3 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+            }
+            renderActiveChart();
+        }
+
+        function applyTimelineFilter() {
+            if (selectedYear === "ALL") {
+                filteredMonthlyData = [...allMonthlyData];
+            } else {
+                filteredMonthlyData = allMonthlyData.filter(d => String(d.year) === selectedYear);
+            }
+
+            const slider = document.getElementById("timeline-slider");
+            if (filteredMonthlyData.length > 0) {
+                slider.min = 0;
+                slider.max = filteredMonthlyData.length - 1;
+                activeSliderIndex = filteredMonthlyData.length - 1;
+                slider.value = activeSliderIndex;
+
+                const first = filteredMonthlyData[0];
+                const last = filteredMonthlyData[filteredMonthlyData.length - 1];
+                document.getElementById("slider-min-label").innerText = `${first.month_name.substring(0,3)} ${first.year}`;
+                document.getElementById("slider-max-label").innerText = `${last.month_name.substring(0,3)} ${last.year}`;
+
+                updateSelectedCards(activeSliderIndex);
+            }
+            renderActiveChart();
+        }
+
+        function handleSliderChange(val) {
+            activeSliderIndex = Number(val);
+            updateSelectedCards(activeSliderIndex);
+            renderActiveChart();
+        }
+
+        function updateSelectedCards(idx) {
+            const item = filteredMonthlyData[idx];
+            if (!item) return;
+
+            document.getElementById("slider-current-label").innerText = `${item.month_name} ${item.year}`;
+
+            const mRev = Number(item.total_sales || 0);
+            const mOrders = Number(item.total_orders || 0);
+            document.getElementById("selected-month-rev").innerText = `R$ ${mRev.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById("selected-month-orders").innerText = `${mOrders.toLocaleString()} orders in ${item.month_name.substring(0,3)}`;
+
+            const yrObj = yearlyMap[String(item.year)];
+            if (yrObj) {
+                document.getElementById("selected-year-title").innerText = `Full Year ${item.year} Revenue`;
+                document.getElementById("selected-year-rev").innerText = `R$ ${yrObj.total_sales.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                document.getElementById("selected-year-orders").innerText = `${yrObj.total_orders.toLocaleString()} orders (${yrObj.months_count} mos)`;
+            }
+        }
+
+        function renderActiveChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
             if (salesChartInstance) salesChartInstance.destroy();
+
+            if (chartGranularity === "yearly") {
+                const years = Object.keys(yearlyMap).sort();
+                const values = years.map(y => yearlyMap[y].total_sales);
+                const currentSelectedYr = filteredMonthlyData[activeSliderIndex] ? String(filteredMonthlyData[activeSliderIndex].year) : null;
+
+                document.getElementById("chart-title").innerHTML = `<i class="fa-solid fa-chart-column text-emerald-400 mr-2"></i> Annual Revenue Comparison (Year-by-Year)`;
+                document.getElementById("chart-badge").innerText = `${years.length} Years`;
+
+                salesChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: years,
+                        datasets: [{
+                            label: 'Annual Revenue (R$)',
+                            data: values,
+                            backgroundColor: years.map(y => y === currentSelectedYr ? '#10b981' : 'rgba(59, 130, 246, 0.7)'),
+                            borderColor: years.map(y => y === currentSelectedYr ? '#34d399' : '#3b82f6'),
+                            borderWidth: 1.5,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                        }
+                    }
+                });
+                return;
+            }
+
+            const labels = filteredMonthlyData.map(d => `${d.month_name.substring(0,3)} ${d.year}`);
+            const revenues = filteredMonthlyData.map(d => Number(d.total_sales || 0));
+            const pointRadii = filteredMonthlyData.map((_, i) => i === activeSliderIndex ? 7 : 2.5);
+            const pointColors = filteredMonthlyData.map((_, i) => i === activeSliderIndex ? '#10b981' : '#3b82f6');
+
+            document.getElementById("chart-title").innerHTML = `<i class="fa-solid fa-chart-area text-blue-500 mr-2"></i> Monthly Sales & Revenue Trend`;
+            document.getElementById("chart-badge").innerText = selectedYear === "ALL" ? "All Years" : `Year ${selectedYear}`;
 
             salesChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Total Revenue (R$)',
+                        label: 'Monthly Revenue (R$)',
                         data: revenues,
                         borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
                         fill: true,
                         tension: 0.3,
                         borderWidth: 2.5,
-                        pointRadius: 2
+                        pointRadius: pointRadii,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: filteredMonthlyData.map((_, i) => i === activeSliderIndex ? 2 : 0)
                     }]
                 },
                 options: {
@@ -274,9 +628,145 @@
             });
         }
 
+        function renderYearlyTable() {
+            const tbody = document.getElementById("yearly-tbody");
+            const years = Object.keys(yearlyMap).sort().reverse();
+            if (years.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">No annual data available.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = years.map(yr => {
+                const row = yearlyMap[yr];
+                const isSelected = selectedYear === yr;
+                return `
+                    <tr onclick="selectYearFilter('${yr}')" class="cursor-pointer transition ${isSelected ? 'bg-blue-600/20 text-white' : 'hover:bg-slate-900/50'}">
+                        <td class="p-3 font-bold ${isSelected ? 'text-blue-400' : 'text-white'}">${row.year}</td>
+                        <td class="p-3 text-center text-slate-300">${row.total_orders.toLocaleString()}</td>
+                        <td class="p-3 text-right font-semibold text-emerald-400">R$ ${row.total_sales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderStatesSection(states) {
+            const tbody = document.getElementById("states-tbody");
+            if (!states.length) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-500">No state data.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = states.slice(0, 7).map(s => `
+                <tr class="hover:bg-slate-900/40">
+                    <td class="p-2.5 font-bold text-white">${s.state}</td>
+                    <td class="p-2.5 text-right text-emerald-400 font-semibold">R$ ${Number(s.total_sales).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td class="p-2.5 text-center text-slate-300">${s.avg_delivery_days}d</td>
+                    <td class="p-2.5 text-right ${Number(s.late_pct) > 10 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${s.late_pct}%</td>
+                </tr>
+            `).join('');
+
+            const ctx = document.getElementById('statesChart').getContext('2d');
+            if (statesChartInstance) statesChartInstance.destroy();
+            const top6 = states.slice(0, 6);
+            statesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: top6.map(s => s.state),
+                    datasets: [{
+                        label: 'Revenue (R$)',
+                        data: top6.map(s => Number(s.total_sales)),
+                        backgroundColor: 'rgba(99, 102, 241, 0.75)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function renderPaymentsSection(payments) {
+            const legendEl = document.getElementById("payments-legend");
+            if (!payments.length) {
+                legendEl.innerHTML = `<p class="text-slate-500">No payment data.</p>`;
+                return;
+            }
+            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+            const totalPayVal = payments.reduce((acc, p) => acc + Number(p.total_value || 0), 0);
+
+            legendEl.innerHTML = payments.map((p, idx) => {
+                const pct = totalPayVal > 0 ? ((Number(p.total_value) / totalPayVal) * 100).toFixed(1) : 0;
+                const label = p.payment_type.replace(/_/g, ' ').toUpperCase();
+                return `
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background:${colors[idx % colors.length]}"></span>
+                            <div>
+                                <p class="font-semibold text-white">${label}</p>
+                                <p class="text-[10px] text-slate-400">Avg ${p.avg_installments}x installments</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-emerald-400">${pct}%</p>
+                            <p class="text-[10px] text-slate-400">R$ ${Number(p.total_value).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const ctx = document.getElementById('paymentsChart').getContext('2d');
+            if (paymentsChartInstance) paymentsChartInstance.destroy();
+            paymentsChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: payments.map(p => p.payment_type.replace(/_/g, ' ').toUpperCase()),
+                    datasets: [{
+                        data: payments.map(p => Number(p.total_value)),
+                        backgroundColor: colors,
+                        borderColor: '#111827',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderSellersTable(sellers) {
+            const tbody = document.getElementById("sellers-tbody");
+            if (!sellers.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No seller data available.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = sellers.map(s => `
+                <tr class="hover:bg-slate-900/40 transition">
+                    <td class="p-3 font-mono text-xs text-purple-400">${s.seller_id.substring(0, 12)}...</td>
+                    <td class="p-3 text-slate-200">${s.seller_city}, <span class="font-bold text-white">${s.seller_state}</span></td>
+                    <td class="p-3 text-center">${Number(s.total_orders).toLocaleString()}</td>
+                    <td class="p-3 text-right font-semibold text-emerald-400">R$ ${Number(s.total_sales).toLocaleString()}</td>
+                    <td class="p-3 text-right">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${Number(s.late_pct) > 10 ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/15 text-emerald-400'}">
+                            ${s.late_pct}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
         function renderCategoriesTable(categories) {
             const tbody = document.getElementById("categories-tbody");
-            tbody.innerHTML = categories.slice(0, 5).map(c => `
+            tbody.innerHTML = categories.slice(0, 6).map(c => `
                 <tr class="hover:bg-slate-900/40 transition">
                     <td class="p-3 font-medium text-white">${c.category_name_en}</td>
                     <td class="p-3 text-center">${c.total_orders.toLocaleString()}</td>
@@ -292,7 +782,7 @@
                 tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No low stock alerts found.</td></tr>`;
                 return;
             }
-            tbody.innerHTML = items.slice(0, 5).map(i => `
+            tbody.innerHTML = items.slice(0, 6).map(i => `
                 <tr class="hover:bg-slate-900/40 transition">
                     <td class="p-3 font-mono text-xs text-blue-400">${i.product_id.substring(0, 10)}...</td>
                     <td class="p-3">${i.category_name_en}</td>
@@ -303,50 +793,23 @@
             `).join('');
         }
 
-        async function sendQuickPrompt(promptText) {
-            document.getElementById("chat-input").value = promptText;
-            handleChatSubmit(new Event('submit'));
-        }
-
-        async function handleChatSubmit(event) {
-            event.preventDefault();
-            const inputEl = document.getElementById("chat-input");
-            const msg = inputEl.value.trim();
-            if (!msg) return;
-
-            const chatMessages = document.getElementById("chat-messages");
-            
-            // Append User Message
-            chatMessages.innerHTML += `<div class="bg-blue-600/20 border border-blue-500/30 p-2.5 rounded-xl text-blue-200 ml-4"><strong>You:</strong> ${msg}</div>`;
-            inputEl.value = "";
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            try {
-                const res = await fetch(`${API_BASE}/api/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg, include_synthetic: true })
-                });
-                const data = await res.json();
-
-                let botHtml = `<div class="bg-slate-800/80 border border-slate-700 p-3 rounded-xl text-slate-200 mr-4"><strong>AI Assistant:</strong><p class="mt-1">${data.answer}</p>`;
-                
-                if (data.recommendations && data.recommendations.length > 0) {
-                    botHtml += `<div class="mt-2 space-y-1">`;
-                    data.recommendations.slice(0, 3).forEach(r => {
-                        botHtml += `<div class="bg-slate-900 p-2 rounded border border-slate-800 text-[11px] flex justify-between"><span>🏷️ <strong>${r.category_name_en}</strong> (Stock: ${r.closing_stock})</span><span class="text-emerald-400 font-bold">R$ ${r.avg_price}</span></div>`;
-                    });
-                    botHtml += `</div>`;
-                }
-                botHtml += `</div>`;
-
-                chatMessages.innerHTML += botHtml;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            } catch (err) {
-                chatMessages.innerHTML += `<div class="bg-rose-500/10 border border-rose-500/30 p-2.5 rounded-xl text-rose-300">Error connecting to AI Assistant API.</div>`;
-            }
+        function exportReportCSV() {
+            if (!filteredMonthlyData || filteredMonthlyData.length === 0) return;
+            const headers = ["Year", "Month", "Month_Name", "Total_Orders", "Total_Revenue_BRL"];
+            const rows = filteredMonthlyData.map(r => [
+                r.year, r.month, `"${r.month_name}"`, r.total_orders, r.total_sales
+            ].join(","));
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const modeTag = includeSynthetic ? "all_480k" : "olist_100k";
+            link.setAttribute("download", `ecommerce_report_${modeTag}_${selectedYear}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
+    <script src="/enhance.js" defer></script>
 </body>
 </html>

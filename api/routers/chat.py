@@ -21,26 +21,6 @@ def chat_assistant(req: ChatRequest) -> Dict[str, Any]:
     msg = req.message.lower().strip()
     queries = load_analytical_queries()
 
-    # 1. Inventory & Low-stock questions
-    if any(k in msg for k in ["stock", "inventory", "reorder", "مخزون", "نواقص", "رصيد"]):
-        if any(k in msg for k in ["cover", "coverage", "تغطية"]):
-            q = queries[20]
-        elif any(k in msg for k in ["health", "monthly", "شهري"]):
-            q = queries[19]
-        elif any(k in msg for k in ["best", "top", "أفضل"]):
-            q = queries[21]
-        else:
-            q = queries[18]
-        rows = fetch_all(q["sql"])
-        return {
-            "intent": "inventory_analytics",
-            "title": q["title"],
-            "answer": f"Here is the live warehouse report for **{q['title']}** ({len(rows)} records returned from `warehouse.fact_inventory`).",
-            "query_id": q["query_id"],
-            "data": rows,
-            "recommendations": [],
-        }
-
     # 2. Product Recommendation questions
     if any(k in msg for k in ["recommend", "suggest", "trending", "رشح", "اقترح", "توصية", "منتجات"]):
         cats = fetch_all("""
@@ -65,6 +45,26 @@ def chat_assistant(req: ChatRequest) -> Dict[str, Any]:
             "query_id": None,
             "data": [],
             "recommendations": recs,
+        }
+
+    # 1. Inventory & Low-stock questions
+    if any(k in msg for k in ["stock", "inventory", "reorder", "مخزون", "نواقص", "رصيد"]):
+        if any(k in msg for k in ["cover", "coverage", "تغطية"]):
+            q = queries[20]
+        elif any(k in msg for k in ["health", "monthly", "شهري"]):
+            q = queries[19]
+        elif any(k in msg for k in ["best", "top", "أفضل"]):
+            q = queries[21]
+        else:
+            q = queries[18]
+        rows = fetch_all(q["sql"])
+        return {
+            "intent": "inventory_analytics",
+            "title": q["title"],
+            "answer": f"Here is the live warehouse report for **{q['title']}** ({len(rows)} records returned from `warehouse.fact_inventory`).",
+            "query_id": q["query_id"],
+            "data": rows,
+            "recommendations": [],
         }
 
     # 3. Delivery & Shipping delay questions
