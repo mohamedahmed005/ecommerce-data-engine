@@ -10,13 +10,15 @@ An end-to-end data engineering project built on the [Olist Brazilian E-Commerce 
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [Data](#data)
 - [Data Pipeline](#data-pipeline)
 - [Warehouse Design](#warehouse-design)
 - [Analytical Queries](#analytical-queries)
 - [Data Quality](#data-quality)
 - [Synthetic Data](#synthetic-data)
 - [Web Application](#web-application)
-- [Deployment (Azure App Service)](#deployment-azure-app-service)
+- [Live Demo](#live-demo)
+- [Deployment (Azure Container Apps)](#deployment-azure-container-apps)
 
 ---
 
@@ -33,11 +35,11 @@ An end-to-end data engineering project built on the [Olist Brazilian E-Commerce 
 
 ## Screenshots
 
-### Landing page
+### Landing Page
 
 ![Landing page](docs/images/landing.png)
 
-### Executive dashboard
+### Executive Dashboard
 
 ![Dashboard overview: time explorer and KPI cards](docs/images/dashboard-overview.png)
 
@@ -45,7 +47,7 @@ An end-to-end data engineering project built on the [Olist Brazilian E-Commerce 
 
 ![Top states by revenue and delivery SLA, payment methods](docs/images/dashboard-states-payments.png)
 
-### AI analytics assistant
+### AI Analytics Assistant
 
 ![Warehouse AI Copilot answering an inventory question](docs/images/chat-assistant.png)
 
@@ -61,11 +63,11 @@ An end-to-end data engineering project built on the [Olist Brazilian E-Commerce 
 | Pipeline | Python, SQL |
 | Backend | FastAPI, Uvicorn, `psycopg2` `ThreadedConnectionPool` |
 | Frontend | HTML, Tailwind CSS, Chart.js, vanilla JavaScript |
-| Infrastructure | Docker Compose, Azure |
+| Infrastructure | Docker, Docker Compose, Azure Container Apps, GitHub Actions, GHCR |
 
 ## Architecture
 
-```
+```text
 Olist CSVs ──► raw ──► staging ──► warehouse (star schema) ──► FastAPI ──► Dashboard / AI Assistant
                 │          │              │
                 └──────────┴──────────────┴──► dq (quality checks & reports)
@@ -80,24 +82,25 @@ Olist CSVs ──► raw ──► staging ──► warehouse (star schema) ─
 
 ## Project Structure
 
-```
+```text
 ecommerce-data-engine/
-├── api/               # FastAPI app (main.py, routers: analytics, chat, health)
-├── data/raw/          # Olist CSVs (not in Git, see Data section)
-├── docs/              # profiling report, warehouse DQ report, ERD, screenshots
-├── ingestion/         # raw loader
-├── profiling/         # raw data profiling and quality checks
-├── scripts/           # run_pipeline, simulate_db_orders, run_queries, test_connection
+├── api/                # FastAPI app (main.py, routers: analytics, chat, health)
+├── data/raw/           # Olist CSVs (not in Git, see Data section)
+├── docs/               # Profiling report, warehouse DQ report, ERD, screenshots
+├── ingestion/          # Raw loader
+├── profiling/          # Raw data profiling and quality checks
+├── scripts/            # Run pipeline, simulate orders, run queries, test connection
 ├── sql/
-│   ├── init/          # schemas (run automatically by Docker)
-│   ├── staging/       # staging layer SQL
-│   └── warehouse/     # DDL, load scripts, analytical queries, inventory
-├── staging/           # staging runner and validation
-├── warehouse/         # DDL runner, ETL, inventory generation, DQ checks
-├── index.html         # Executive dashboard
-├── chat.html          # AI analytics assistant
-├── landing.html       # Landing page (entry point of the site)
-├── enhance.js         # Shared UX layer for the three pages
+│   ├── init/           # Schemas (run automatically by Docker)
+│   ├── staging/        # Staging layer SQL
+│   └── warehouse/      # DDL, load scripts, analytical queries, inventory
+├── staging/            # Staging runner and validation
+├── warehouse/          # DDL runner, ETL, inventory generation, DQ checks
+├── index.html          # Executive dashboard
+├── chat.html           # AI analytics assistant
+├── landing.html        # Landing page (entry point of the site)
+├── enhance.js          # Shared UX layer for the three pages
+├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
 └── requirements.txt
@@ -111,17 +114,17 @@ ecommerce-data-engine/
 - Docker (only for the local database)
 - The Olist CSV files (see [Data](#data))
 
-### 1. Clone and install
+### 1. Clone and Install
 
 ```bash
 git clone https://github.com/mohamedahmed005/ecommerce-data-engine.git
 cd ecommerce-data-engine
 
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure the environment
+### 2. Configure the Environment
 
 ```bash
 cp .env.example .env     # Windows: copy .env.example .env
@@ -140,23 +143,31 @@ Set the connection variables in `.env`:
 
 > `.env` is local only and is never committed. Copy it from `.env.example` on every machine.
 
-### 3. Choose a database
+### 3. Choose a Database
 
-**Option A: Local database (Docker)**
+**Option A: Local Database (Docker)**
 
 ```bash
 docker compose up -d
-docker compose ps                    # ecom_postgres should be "healthy"
-python scripts/test_connection.py    # prints the Postgres version
+docker compose ps                  # ecom_postgres should be "healthy"
+python scripts/test_connection.py  # prints the Postgres version
 ```
 
-Then build the warehouse with the [pipeline](#data-pipeline). To reset the local database completely (deletes all data): `docker compose down -v`.
+Then build the warehouse with the [pipeline](#data-pipeline).
 
-**Option B: Existing Azure PostgreSQL database**
+To reset the local database completely (deletes all data):
 
-The warehouse data is already loaded in an Azure PostgreSQL database named `ecom`. Point your `.env` at it and skip the pipeline. Do not run the Docker or rebuild steps against this database.
+```bash
+docker compose down -v
+```
 
-### 4. Run the app
+**Option B: Existing Azure PostgreSQL Database**
+
+The warehouse data is already loaded in an Azure PostgreSQL database named `ecom`. Point your `.env` at it and skip the pipeline.
+
+**Important:** Do not run Docker database initialization or rebuild steps against the hosted database unless you explicitly intend to modify it.
+
+### 4. Run the App Locally
 
 ```bash
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
@@ -164,18 +175,18 @@ python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 
 | Page | URL |
 |---|---|
-| Landing page | http://localhost:8000/ |
-| Executive dashboard | http://localhost:8000/dashboard |
-| AI assistant | http://localhost:8000/chat |
-| API docs | http://localhost:8000/docs |
-| Health check | http://localhost:8000/api/health |
+| Landing page | [http://localhost:8000/](http://localhost:8000/) |
+| Executive dashboard | [http://localhost:8000/dashboard](http://localhost:8000/dashboard) |
+| AI assistant | [http://localhost:8000/chat](http://localhost:8000/chat) |
+| API docs | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| Health check | [http://localhost:8000/api/health](http://localhost:8000/api/health) |
 
 ## Data
 
 The CSVs are not committed. Download the Olist dataset from [Kaggle](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) and place the 9 files in `data/raw/`.
 
 | Table | Expected rows |
-|---|---|
+|---|---:|
 | customers | 99,441 |
 | geolocation | 1,000,163 |
 | order_items | 112,650 |
@@ -190,17 +201,17 @@ If your counts differ, check the CSVs before moving on.
 
 ## Data Pipeline
 
-### Run everything with one command
+### Run Everything with One Command
 
 ```bash
-python scripts/run_pipeline.py                                   # standard run (original Olist data only)
-python scripts/run_pipeline.py --docker                          # check/start Docker first
-python scripts/run_pipeline.py --replace-demo 380000 --batch-size 5000   # generate demo orders first
-python scripts/run_pipeline.py --from etl                        # resume from a stage
-python scripts/run_pipeline.py --only dq                         # run a single stage
+python scripts/run_pipeline.py                         # Standard run (original Olist data only)
+python scripts/run_pipeline.py --docker                # Check/start Docker first
+python scripts/run_pipeline.py --replace-demo 380000 --batch-size 5000
+python scripts/run_pipeline.py --from etl              # Resume from a stage
+python scripts/run_pipeline.py --only dq               # Run a single stage
 ```
 
-### Run stage by stage
+### Run Stage by Stage
 
 | Step | Command | What it does |
 |---|---|---|
@@ -221,17 +232,17 @@ Star schema ERD and data dictionary: `docs/erd/warehouse_erd.md` (diagram: `docs
 
 | Table | Type | Grain | Primary key |
 |---|---|---|---|
-| dim_date | dimension | one calendar day | date_key (YYYYMMDD) |
-| dim_geography | dimension | one zip-code prefix | geography_key |
-| dim_customer | dimension | one real customer (`customer_unique_id`) | customer_key |
-| dim_product | dimension | one product | product_key |
-| dim_seller | dimension | one seller | seller_key |
-| fact_sales | fact | one order item | (order_id, order_item_id) |
-| fact_payments | fact | one payment row of an order | (order_id, payment_sequential) |
-| fact_reviews | fact | one review | (review_id, order_id) |
-| fact_inventory | fact (synthetic) | one product per month | (product_key, snapshot_date_key) |
+| dim_date | dimension | One calendar day | date_key (YYYYMMDD) |
+| dim_geography | dimension | One zip-code prefix | geography_key |
+| dim_customer | dimension | One real customer (`customer_unique_id`) | customer_key |
+| dim_product | dimension | One product | product_key |
+| dim_seller | dimension | One seller | seller_key |
+| fact_sales | fact | One order item | (order_id, order_item_id) |
+| fact_payments | fact | One payment row of an order | (order_id, payment_sequential) |
+| fact_reviews | fact | One review | (review_id, order_id) |
+| fact_inventory | fact (synthetic) | One product per month | (product_key, snapshot_date_key) |
 
-**Design notes**
+**Design Notes**
 
 - Every dimension has a surrogate key; the natural key is kept as a `UNIQUE` attribute.
 - Each dimension (except `dim_date`) has an **Unknown** member with key `-1`. A fact row that cannot resolve a key points to it instead of being dropped.
@@ -239,7 +250,7 @@ Star schema ERD and data dictionary: `docs/erd/warehouse_erd.md` (diagram: `docs
 - `fact_sales` carries the quality flags `is_valid_item`, `is_valid_sale`, `is_delivered`, and `is_synthetic`. Suspicious rows are flagged, never deleted.
 - `order_id` is a degenerate dimension: `fact_payments` and `fact_reviews` link to `fact_sales` through `order_id` only, with no enforced FK.
 
-**ETL rules**
+**ETL Rules**
 
 - A date that does not exist (for example, an order never delivered) stays `NULL`.
 - `dim_customer` keeps one row per `customer_unique_id`, with the address of the customer's most recent order.
@@ -247,7 +258,7 @@ Star schema ERD and data dictionary: `docs/erd/warehouse_erd.md` (diagram: `docs
 - `delivery_days` = delivered date − purchase date. `delay_days` = delivered date − estimated date (positive = late). Both use calendar dates.
 - `is_valid_item` = `price > 0` and `freight_value >= 0` and all keys resolved. `is_valid_sale` = `is_valid_item` and status not `canceled`/`unavailable`. `is_delivered` = status `delivered` and a delivered date exists.
 
-**Synthetic inventory (`fact_inventory`)**
+**Synthetic Inventory (`fact_inventory`)**
 
 Olist does not track inventory, so it is generated from actual monthly sales via `sql/warehouse/06_inventory.sql`.
 
@@ -270,7 +281,7 @@ All queries live in `sql/warehouse/05_analytical_queries.sql` (Gold layer) and a
 - **Section C (18–21):** Inventory analytics.
 
 | # | Query | Section | What it measures |
-|---|---|---|---|
+|---:|---|:---:|---|
 | 1 | Reference: Monthly Sales Performance | A | Monthly revenue and orders |
 | 2 | Reference: Delivery Performance | A | Delivery delays, on-time rate |
 | 3 | Reference: Customer Review Analysis | A | Review score breakdown |
@@ -293,7 +304,11 @@ All queries live in `sql/warehouse/05_analytical_queries.sql` (Gold layer) and a
 | 20 | Stock Coverage by Category | C | Months of cover per category |
 | 21 | Best-Selling Products vs Current Stock | C | Top products compared to closing stock |
 
-Run them with `python scripts/run_queries.py`.
+Run them with:
+
+```bash
+python scripts/run_queries.py
+```
 
 ## Data Quality
 
@@ -317,9 +332,9 @@ Run them with `python scripts/run_queries.py`.
 Optional. Adds realistic demo orders to the `raw` layer from November 2018 to September 2026, continuing where the original Olist data ends, so the dashboard and assistant have a longer timeline.
 
 ```bash
-python scripts/simulate_db_orders.py --orders 380000 --batch-size 5000            # add demo orders
-python scripts/simulate_db_orders.py --orders 380000 --replace --batch-size 5000  # replace with a fresh batch
-python scripts/simulate_db_orders.py --remove                                     # back to original Olist only
+python scripts/simulate_db_orders.py --orders 380000 --batch-size 5000           # Add demo orders
+python scripts/simulate_db_orders.py --orders 380000 --replace --batch-size 5000 # Replace with a fresh batch
+python scripts/simulate_db_orders.py --remove                                    # Back to original Olist only
 ```
 
 After generating or removing demo rows, always rebuild the downstream layers:
@@ -371,11 +386,11 @@ python warehouse/generate_inventory.py
 - **Landing:** headline KPI strip and scroll-reveal animations.
 - **Assistant:** command history (`↑` `↓`), `/` to focus the input, automatic text direction, copy buttons, timestamps, scroll-to-bottom button, mobile quick-prompt chips, chat export to `.txt`, and chat persistence between visits.
 
-### AI analytics assistant
+### AI Analytics Assistant
 
 `api/routers/chat.py` routes each question to an approved report using intent classification and supported keywords in English and Arabic.
 
-Supported topics:
+**Supported Topics**
 
 - Revenue, monthly sales, and average order value
 - Top product categories and sellers
@@ -383,7 +398,7 @@ Supported topics:
 - Low-stock and reorder reports (the executive inventory summary also reports out-of-stock counts)
 - Trending product recommendations with healthy stock, optionally filtered by category such as `health_beauty`
 
-Example questions:
+**Example Questions**
 
 - `What is the total revenue and order count?`
 - `Top 10 categories by revenue`
@@ -391,53 +406,78 @@ Example questions:
 - `Recommend trending products in stock`
 - `Recommend products in health_beauty category`
 
-## Deployment (Azure App Service)
+## Live Demo
 
-The warehouse data is hosted on Azure Database for PostgreSQL. The web application is not deployed yet and currently runs locally. This section describes how to publish it to a public HTTPS URL using Azure App Service, connected to the existing database (no second database is needed). Docker Compose is for local development only.
+The project is deployed on Microsoft Azure and publicly accessible through the following links.
 
-### 1. Prepare the repository
+| Component | Live URL |
+|---|---|
+| Landing Page | [Open Website](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/) |
+| Executive Dashboard | [Open Dashboard](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/dashboard) |
+| AI Analytics Assistant | [Open Assistant](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/chat) |
+| API Documentation | [Swagger UI](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/docs) |
+| API Health Check | [Check API Status](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/api/health) |
 
-- Keep `.env` out of Git (it is already in `.gitignore`). Never commit database passwords.
-- Commit `landing.html`, `chat.html`, and `enhance.js`; otherwise those pages will be missing from the deployment.
-- Make sure `requirements.txt` includes FastAPI and Uvicorn.
+## Deployment (Azure Container Apps)
 
-### 2. Create the App Service
+The application is deployed using **Azure Container Apps**, with an existing **Azure Database for PostgreSQL Flexible Server** hosting the warehouse data.
 
-In the Azure portal, create an **App Service** on **Linux** with **Python 3.13** and pick a plan for your workload (check the tier and estimated cost first). Use a globally unique app name.
+### Cloud Infrastructure
 
-Under **Deployment Center**, connect the GitHub repository and branch. Set the App Service setting `SCM_DO_BUILD_DURING_DEPLOYMENT` to `true` so Azure installs `requirements.txt`. The app will be available at `https://<app-name>.azurewebsites.net` and redeploy on every push.
+| Component | Technology |
+|---|---|
+| Application Hosting | Azure Container Apps |
+| Container Registry | GitHub Container Registry (GHCR) |
+| Database Hosting | Azure Database for PostgreSQL Flexible Server |
+| Backend | FastAPI + Uvicorn |
+| Container Port | 8080 |
+| Database | PostgreSQL (`ecom`) |
 
-### 3. Set the startup command
+### Docker Image
 
-In **Settings → Configuration → General settings**, set **Startup Command** to:
+The application image is published to GitHub Container Registry:
 
 ```text
-python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+ghcr.io/mohamedahmed005/ecommerce-data-engine:latest
 ```
 
-Save and restart the App Service.
+Version-specific images are also published using the full Git commit SHA.
 
-### 4. Configure the database connection
+### CI/CD Pipeline
 
-In **Settings → Environment variables → App settings**, add the values for the existing Azure PostgreSQL server. Set them in the Azure portal, never in Git or this README.
+GitHub Actions automates Docker image building and publishing whenever changes are pushed to the `main` branch.
 
-| App setting | Value |
+The workflow performs the following steps:
+
+1. Checks out the latest repository code.
+2. Sets up Docker Buildx.
+3. Authenticates with GitHub Container Registry.
+4. Builds the Docker image using the project's Dockerfile.
+5. Publishes two image tags:
+   - `latest`
+   - The full Git commit SHA.
+
+### Database Configuration
+
+The application connects to the existing Azure PostgreSQL database through environment variables configured in Azure Container Apps.
+
+| Variable | Description |
 |---|---|
-| `POSTGRES_HOST` | Server FQDN, such as `your-server.postgres.database.azure.com` (not `localhost`) |
+| `POSTGRES_HOST` | Azure PostgreSQL server hostname |
 | `POSTGRES_PORT` | `5432` |
-| `POSTGRES_DB` | Existing database name |
-| `POSTGRES_USER` | Existing database user |
-| `POSTGRES_PASSWORD` | Existing database password |
+| `POSTGRES_DB` | `ecom` |
+| `POSTGRES_USER` | Database username |
+| `POSTGRES_PASSWORD` | Stored securely in Azure |
 | `PGSSLMODE` | `require` |
 
-Save the settings and restart the app.
+Database credentials are configured securely in Azure and are never committed to the repository.
 
-### 5. Allow the app to reach PostgreSQL
+### Deployment Verification
 
-If PostgreSQL uses **Public access**, add all current and possible outbound IP addresses of the App Service (found on its **Properties** page) to the server's firewall rules. If it uses **Private access**, connect the App Service to the database's virtual network. A firewall rule alone does not grant database access; keep PostgreSQL authentication enabled.
+The following endpoints are available for checking the deployed application:
 
-### 6. Verify
-
-Open the app's default domain and check `/`, `/dashboard`, `/chat`, `/docs`, and `/api/health`. If startup or the database connection fails, review **Monitoring → Log stream**.
-
-References: [Deploy a Python FastAPI app to App Service](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python) · [Configure a Linux Python app](https://learn.microsoft.com/en-us/azure/app-service/configure-language-python) · [PostgreSQL firewall rules](https://learn.microsoft.com/en-us/azure/postgresql/security/security-firewall-rules)
+- `/` — Landing page
+- `/dashboard` — Executive dashboard
+- `/chat` — AI analytics assistant
+- `/docs` — Interactive API documentation
+- `/api/health` — API and database health status
