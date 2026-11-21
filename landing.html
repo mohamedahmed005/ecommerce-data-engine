@@ -1,92 +1,172 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Olist Data Warehouse | Enterprise BI & AI Platform</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-bg { background: radial-gradient(circle at top right, #1e1b4b, #0f172a 60%); }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .gradient-bg {
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a 60%);
+        }
     </style>
 </head>
+
 <body class="gradient-bg text-white min-h-screen flex flex-col justify-between antialiased">
 
     <!-- Top Navbar -->
     <header class="max-w-7xl w-full mx-auto px-6 py-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-extrabold text-xl shadow-lg shadow-indigo-500/30">O</div>
+            <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-extrabold text-xl shadow-lg shadow-indigo-500/30">
+                O
+            </div>
+
             <div>
                 <span class="font-bold text-lg tracking-tight">Olist Data Engine</span>
                 <span class="block text-xs text-indigo-300">Azure Cloud Warehouse</span>
             </div>
         </div>
+
         <nav class="flex items-center gap-1 bg-white/5 border border-white/10 rounded-2xl p-1.5 shadow-lg shadow-black/20 text-sm">
-            <a href="/dashboard" class="px-4 py-2 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-white/10 hover:-translate-y-0.5 transition">Dashboard</a>
-            <a href="/chat" class="px-4 py-2 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-white/10 hover:-translate-y-0.5 transition">AI Chat</a>
+            <a href="/dashboard" class="px-4 py-2 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-white/10 hover:-translate-y-0.5 transition">
+                Dashboard
+            </a>
+
+            <a href="/chat" class="px-4 py-2 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-white/10 hover:-translate-y-0.5 transition">
+                AI Chat
+            </a>
         </nav>
     </header>
 
+
     <!-- Hero Section -->
     <main class="max-w-6xl mx-auto px-6 py-12 text-center">
+
         <div class="inline-flex items-center gap-2 bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Connected to Azure PostgreSQL • 470K+ Orders • 10-Year Timeline
+            Connected to Azure PostgreSQL • Olist E-Commerce Analytics
         </div>
 
         <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight max-w-4xl mx-auto">
-            Turn Raw E-Commerce Data into <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-300">Executive Decisions</span>
+            Turn Raw E-Commerce Data into
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-300">
+                Executive Decisions
+            </span>
         </h1>
 
         <p class="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto mt-6 leading-relaxed">
-            End-to-end Star Schema data warehouse combining Olist historical records with synthetic forecasting (2016–2026), real-time KPI caching, and an Arabic/English AI Warehouse Assistant.
+            An end-to-end E-Commerce Data Warehouse built on a Star Schema architecture, transforming Olist historical data into actionable business insights through interactive BI dashboards, inventory analytics, and a bilingual AI Warehouse Assistant.
         </p>
+
 
         <!-- Primary Action Buttons -->
         <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+
             <a href="/dashboard" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5">
                 Launch Executive Dashboard →
             </a>
+
             <a href="/chat" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-white font-semibold px-8 py-4 rounded-xl transition">
                 Ask AI Warehouse Assistant
             </a>
+
         </div>
+
 
         <!-- Feature Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 text-left">
+
+            <!-- Feature 1 -->
             <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                <div class="text-indigo-400 font-bold text-sm uppercase tracking-wider mb-2">01 • Cloud Star Schema</div>
-                <h3 class="text-lg font-bold mb-2">Azure PostgreSQL Warehouse</h3>
+
+                <div class="text-indigo-400 font-bold text-sm uppercase tracking-wider mb-2">
+                    01 • Cloud Star Schema
+                </div>
+
+                <h3 class="text-lg font-bold mb-2">
+                    Azure PostgreSQL Warehouse
+                </h3>
+
                 <p class="text-sm text-slate-400 leading-relaxed">
-                    Modeled into Fact & Dimension tables (`fact_sales`, `fact_inventory`, `fact_reviews`, `fact_payments`) with connection pooling and single-pass CTEs.
+                    Modeled into Fact and Dimension tables, including
+                    <code>fact_sales</code>,
+                    <code>fact_inventory</code>,
+                    <code>fact_reviews</code>, and
+                    <code>fact_payments</code>,
+                    with connection pooling and optimized analytical queries.
                 </p>
+
             </div>
 
+
+            <!-- Feature 2 -->
             <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                <div class="text-cyan-400 font-bold text-sm uppercase tracking-wider mb-2">02 • Sub-Second BI</div>
-                <h3 class="text-lg font-bold mb-2">Pre-Warmed Executive KPIs</h3>
+
+                <div class="text-cyan-400 font-bold text-sm uppercase tracking-wider mb-2">
+                    02 • Interactive BI
+                </div>
+
+                <h3 class="text-lg font-bold mb-2">
+                    Executive KPI Dashboard
+                </h3>
+
                 <p class="text-sm text-slate-400 leading-relaxed">
-                    Background cache warming across all 11 years and timeline modes delivers instant revenue, delivery delay, and seller insights.
+                    Explore business performance through interactive KPIs
+                    and analytical insights covering revenue, delivery
+                    performance, inventory levels, and seller performance.
                 </p>
+
             </div>
 
+
+            <!-- Feature 3 -->
             <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-                <div class="text-emerald-400 font-bold text-sm uppercase tracking-wider mb-2">03 • Bilingual AI</div>
-                <h3 class="text-lg font-bold mb-2">Inventory-Aware Assistant</h3>
+
+                <div class="text-emerald-400 font-bold text-sm uppercase tracking-wider mb-2">
+                    03 • Bilingual AI
+                </div>
+
+                <h3 class="text-lg font-bold mb-2">
+                    Inventory-Aware Assistant
+                </h3>
+
                 <p class="text-sm text-slate-400 leading-relaxed">
-                    Query live stock alerts, top categories, and smart in-stock product recommendations naturally in English or Arabic.
+                    Query inventory alerts, top categories, and product
+                    recommendations naturally in English or Arabic,
+                    using warehouse data to support smarter decisions.
                 </p>
+
             </div>
+
         </div>
+
     </main>
+
 
     <!-- Footer -->
     <footer class="max-w-7xl w-full mx-auto px-6 py-6 border-t border-white/10 text-xs text-slate-400 flex flex-wrap justify-between gap-4">
-        <span>Olist E-Commerce Data Engineering & Analytics Platform</span>
-        <span>FastAPI • PostgreSQL • Tailwind CSS</span>
+
+        <span>
+            Olist E-Commerce Data Engineering & Analytics Platform
+        </span>
+
+        <span>
+            FastAPI • PostgreSQL • Tailwind CSS
+        </span>
+
     </footer>
 
+
     <script src="/enhance.js" defer></script>
+
 </body>
 </html>
