@@ -34,4 +34,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/mohamedahmed005/ecommerce-data-engine:latest
+          tags: |
+            ghcr.io/mohamedahmed005/ecommerce-data-engine:latest
+            ghcr.io/mohamedahmed005/ecommerce-data-engine:${{ github.sha }}
