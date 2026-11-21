@@ -1,6 +1,14 @@
+
+
+<div align="center">
+
 # Olist E-Commerce Data Warehouse & AI Analytics Assistant
 
-[**Live Demo**](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/)
+## 🚀 [EXPLORE THE LIVE DEMO](https://ecommerce-api-v2.icycliff-7a2355f7.francecentral.azurecontainerapps.io/)
+
+**An End-to-End Data Engineering Project**
+
+</div>
 
 An end-to-end data engineering project built on the [Olist Brazilian E-Commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce). It ingests raw CSVs, cleans them, models them as a star schema in PostgreSQL, validates data quality at every layer, and serves the results through a FastAPI backend with an executive dashboard and an AI analytics assistant.
 
